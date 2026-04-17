@@ -1,5 +1,6 @@
 @page "/history"
 @rendermode InteractiveServer
+@attribute [Authorize]
 @inject EfCoreService<AppDbContextCar> DbService
 @using SharedServices
 @using SharedServices.Services

@@ -1,8 +1,13 @@
+using MercenariesAndBeasts.Infrastructure;
+using MercenariesAndBeasts.Infrastructure.Auth;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Services;
 using SharedServices;
 using SharedServices.Services;
+using System.Security.Claims;
 using VINWMIVehicles.Components;
+using VINWMIVehicles.Data;
 using VINWMIVehicles.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,12 +15,21 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddControllers();
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
 var openAiKey = builder.Configuration["OpenAI:ApiKey"] ?? "";
 
-builder.Services.AddDbContextFactory<AppDbContextCar>(o =>
-    o.UseNpgsql(connectionString));
+// Identity DB (AppUser, roles, external logins)
+builder.Services.AddDbContext<VinIdentityDbContext>(o => o.UseNpgsql(connectionString));
 
+// Vehicle data DB
+builder.Services.AddDbContextFactory<AppDbContextCar>(o => o.UseNpgsql(connectionString));
+
+// Identity + Google OAuth (Google keys optional — from appsettings.Development.json)
+builder.Services.AddMabAuth<VinIdentityDbContext>(builder.Configuration);
+
+// Vehicle services
 builder.Services.AddScoped<ErrorService<AppDbContextCar>>();
 builder.Services.AddScoped<EfCoreService<AppDbContextCar>>();
 builder.Services.AddScoped<ChatGPTWMI>();
@@ -31,10 +45,73 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+app.MapControllers();
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode()
+    .AddAdditionalAssemblies(typeof(MercenariesAndBeasts.Infrastructure.Components.Account.Login).Assembly);
+
+// ── Google OAuth external login endpoints ──────────────────────────────────
+
+// 1) POST — kick off the Google challenge
+app.MapPost("/Identity/Account/ExternalLogin", async (
+    HttpContext http,
+    SignInManager<AppUser> signInManager) =>
+{
+    var provider  = http.Request.Form["provider"].ToString();
+    var returnUrl = http.Request.Form["returnUrl"].ToString() ?? "/";
+    var callback  = $"/Identity/Account/ExternalLogin/Callback?returnUrl={Uri.EscapeDataString(returnUrl)}";
+    var props     = signInManager.ConfigureExternalAuthenticationProperties(provider, callback);
+    return Results.Challenge(props, new[] { provider });
+}).DisableAntiforgery();
+
+// 2) GET — handle the Google callback
+app.MapGet("/Identity/Account/ExternalLogin/Callback", async (
+    HttpContext http,
+    string? returnUrl,
+    SignInManager<AppUser> signInManager,
+    UserManager<AppUser> userManager) =>
+{
+    returnUrl ??= "/";
+    var info = await signInManager.GetExternalLoginInfoAsync();
+    if (info is null)
+        return Results.Redirect("/login?error=external");
+
+    var signIn = await signInManager.ExternalLoginSignInAsync(
+        info.LoginProvider, info.ProviderKey, isPersistent: true);
+
+    if (signIn.Succeeded)
+        return Results.Redirect(returnUrl);
+
+    // First-time Google login — auto-create account
+    var email = info.Principal.FindFirstValue(ClaimTypes.Email) ?? "";
+    if (string.IsNullOrWhiteSpace(email))
+        return Results.Redirect("/login?error=noemail");
+
+    var user = new AppUser { UserName = email, Email = email };
+    var created = await userManager.CreateAsync(user);
+    if (created.Succeeded)
+    {
+        await userManager.AddLoginAsync(user, info);
+        await signInManager.SignInAsync(user, isPersistent: true);
+        return Results.Redirect(returnUrl);
+    }
+
+    // User with that email already exists — link the login
+    var existing = await userManager.FindByEmailAsync(email);
+    if (existing is not null)
+    {
+        await userManager.AddLoginAsync(existing, info);
+        await signInManager.SignInAsync(existing, isPersistent: true);
+        return Results.Redirect(returnUrl);
+    }
+
+    return Results.Redirect("/login?error=external");
+});
 
 app.Run();
