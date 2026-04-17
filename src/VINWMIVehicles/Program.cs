@@ -30,6 +30,7 @@ builder.Services.AddDbContextFactory<AppDbContextCar>(o => o.UseNpgsql(connectio
 builder.Services.AddMabAuth<VinIdentityDbContext>(builder.Configuration);
 
 // Vehicle services
+builder.Services.AddScoped<ToastService>();
 builder.Services.AddScoped<ErrorService<AppDbContextCar>>();
 builder.Services.AddScoped<EfCoreService<AppDbContextCar>>();
 builder.Services.AddScoped<ChatGPTWMI>();
