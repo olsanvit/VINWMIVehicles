@@ -7,7 +7,6 @@ using SharedServices;
 using SharedServices.Services;
 using System.Security.Claims;
 using VINWMIVehicles.Components;
-using VINWMIVehicles.Data;
 using VINWMIVehicles.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,13 +20,13 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 var openAiKey = builder.Configuration["OpenAI:ApiKey"] ?? "";
 
 // Identity DB (AppUser, roles, external logins)
-builder.Services.AddDbContext<VinIdentityDbContext>(o => o.UseNpgsql(connectionString));
+builder.Services.AddDbContext<AppDbContextVin>(o => o.UseNpgsql(connectionString));
 
 // Vehicle data DB
 builder.Services.AddDbContextFactory<AppDbContextCar>(o => o.UseNpgsql(connectionString));
 
 // Identity + Google OAuth (Google keys optional — from appsettings.Development.json)
-builder.Services.AddMabAuth<VinIdentityDbContext>(builder.Configuration);
+builder.Services.AddMabAuth<AppDbContextVin>(builder.Configuration);
 
 // Vehicle services
 builder.Services.AddScoped<ToastService>();
