@@ -1,0 +1,99 @@
+@page "/custom-vin"
+@rendermode InteractiveServer
+@inject IVehicleSearchService SearchService
+
+<PageTitle>Custom VIN</PageTitle>
+
+<div class="container-fluid">
+    <h2 class="mb-1"><i class="bi bi-pencil-square me-2 text-danger"></i>Custom VIN</h2>
+    <p class="text-muted mb-4">Libovolný VIN nebo kód — AI analýza bez omezení délky</p>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label fw-semibold">Custom VIN / kód</label>
+                    <input class="form-control form-control-lg font-monospace"
+                           @bind="Vin"
+                           @bind:event="oninput"
+                           placeholder="Zadejte libovolný VIN nebo kód vozidla" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold">Poznámky (volitelné)</label>
+                    <textarea class="form-control"
+                              @bind="Notes"
+                              rows="3"
+                              placeholder="Doplňující informace, kontext, otázky..."></textarea>
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-danger btn-lg w-100" @onclick="Search" disabled="@(IsLoading || string.IsNullOrWhiteSpace(Vin))">
+                        @if (IsLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        <i class="bi bi-robot me-1"></i> AI Analýza
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (ErrorMessage != null)
+    {
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>@ErrorMessage</div>
+    }
+
+    @if (AiResponse != null)
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-robot me-2"></i>AI Analýza pro: <strong>@LastVin</strong>
+            </div>
+            <div class="card-body">
+                <p style="white-space: pre-wrap;">@AiResponse</p>
+            </div>
+        </div>
+
+        @if (SavedVin != null)
+        {
+            <div class="alert alert-success mt-3">
+                <i class="bi bi-check-circle me-2"></i>Uloženo do databáze (VIN: <strong>@SavedVin.Vin</strong>)
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private string Vin { get; set; } = "";
+    private string? Notes { get; set; }
+    private string LastVin { get; set; } = "";
+    private bool IsLoading { get; set; }
+    private string? ErrorMessage { get; set; }
+    private SharedServices.Models.Car.VinInfo? SavedVin { get; set; }
+    private string? AiResponse { get; set; }
+
+    private async Task Search()
+    {
+        if (string.IsNullOrWhiteSpace(Vin)) return;
+        IsLoading = true;
+        ErrorMessage = null;
+        AiResponse = null;
+        SavedVin = null;
+        LastVin = Vin.Trim();
+
+        try
+        {
+            var (ai, saved) = await SearchService.SearchCustomVinAsync(Vin.Trim(), Notes);
+            AiResponse = ai;
+            SavedVin = saved;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}

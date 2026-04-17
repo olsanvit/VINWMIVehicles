@@ -1,0 +1,139 @@
+@page "/wmc-search"
+@rendermode InteractiveServer
+@inject IVehicleSearchService SearchService
+
+<PageTitle>WMC Search</PageTitle>
+
+<div class="container-fluid">
+    <h2 class="mb-1"><i class="bi bi-upc-scan me-2 text-success"></i>WMC Search</h2>
+    <p class="text-muted mb-4">World Manufacturer Code — 6 znaků</p>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">WMC kód (6 znaků)</label>
+                    <input class="form-control form-control-lg"
+                           @bind="WmcCode"
+                           @bind:event="oninput"
+                           @onkeydown="OnKeyDown"
+                           placeholder="např. SA9019, VF1A06"
+                           maxlength="6" />
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-success btn-lg w-100" @onclick="Search" disabled="@(IsLoading || WmcCode.Length != 6)">
+                        @if (IsLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        <i class="bi bi-upc-scan me-1"></i> Hledat
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (ErrorMessage != null)
+    {
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>@ErrorMessage</div>
+    }
+
+    @if (NhtsaResult != null)
+    {
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-success text-white">
+                        <i class="bi bi-database me-2"></i>NHTSA výsledky
+                    </div>
+                    <div class="card-body">
+                        @if (!NhtsaResult.Results.Any())
+                        {
+                            <p class="text-muted">Žádné výsledky z NHTSA.</p>
+                        }
+                        else
+                        {
+                            @foreach (var r in NhtsaResult.Results)
+                            {
+                                <div class="mb-3 pb-3 border-bottom">
+                                    <h6 class="fw-bold">@r.ManufacturerName</h6>
+                                    @if (!string.IsNullOrWhiteSpace(r.Country))
+                                    {
+                                        <span class="badge bg-secondary me-1"><i class="bi bi-geo-alt me-1"></i>@r.Country</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(r.VehicleTypeName))
+                                    {
+                                        <span class="badge bg-info text-dark">@r.VehicleTypeName</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(r.CommonName))
+                                    {
+                                        <p class="small text-muted mt-1 mb-0">@r.CommonName</p>
+                                    }
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-success text-white">
+                        <i class="bi bi-robot me-2"></i>AI Analýza
+                    </div>
+                    <div class="card-body">
+                        <pre class="small" style="white-space: pre-wrap; word-break: break-word;">@AiResponse</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (SavedEntry != null)
+        {
+            <div class="alert alert-success mt-3">
+                <i class="bi bi-check-circle me-2"></i>Uloženo do databáze (kód: <strong>@SavedEntry.Code</strong>)
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private string WmcCode { get; set; } = "";
+    private bool IsLoading { get; set; }
+    private string? ErrorMessage { get; set; }
+    private SharedServices.Models.Car.WmiEntry? SavedEntry { get; set; }
+    private VINWMIVehicles.Models.NhtsaWmiResponse? NhtsaResult { get; set; }
+    private string AiResponse { get; set; } = "";
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && WmcCode.Length == 6)
+            await Search();
+    }
+
+    private async Task Search()
+    {
+        if (WmcCode.Trim().Length != 6) return;
+        IsLoading = true;
+        ErrorMessage = null;
+        NhtsaResult = null;
+        SavedEntry = null;
+        AiResponse = "";
+
+        try
+        {
+            var (nhtsa, ai, saved) = await SearchService.SearchWmiAsync(WmcCode.Trim().ToUpperInvariant(), SharedServices.Models.Car.WmiCodeType.WMC);
+            NhtsaResult = nhtsa;
+            AiResponse = ai;
+            SavedEntry = saved;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}

@@ -1,0 +1,171 @@
+@page "/history"
+@rendermode InteractiveServer
+@inject EfCoreService<AppDbContextCar> DbService
+@using SharedServices
+@using SharedServices.Services
+@using SharedServices.Models.Car
+
+<PageTitle>Historie</PageTitle>
+
+<div class="container-fluid">
+    <h2 class="mb-1"><i class="bi bi-clock-history me-2 text-secondary"></i>Historie vyhledávání</h2>
+    <p class="text-muted mb-4">Přehled uložených WMI/WMC kódů a VIN z databáze.</p>
+
+    <ul class="nav nav-tabs mb-4" id="historyTabs">
+        <li class="nav-item">
+            <button class="nav-link @(ActiveTab == "wmi" ? "active" : "")" @onclick='() => SetTab("wmi")'>
+                <i class="bi bi-search me-1"></i> WMI / WMC
+                @if (WmiEntries != null)
+                {
+                    <span class="badge bg-secondary ms-1">@WmiEntries.Count</span>
+                }
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(ActiveTab == "vin" ? "active" : "")" @onclick='() => SetTab("vin")'>
+                <i class="bi bi-car-front me-1"></i> VIN
+                @if (VinInfos != null)
+                {
+                    <span class="badge bg-secondary ms-1">@VinInfos.Count</span>
+                }
+            </button>
+        </li>
+    </ul>
+
+    @if (IsLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-secondary"></div>
+            <p class="mt-2 text-muted">Načítám data...</p>
+        </div>
+    }
+    else if (ErrorMessage != null)
+    {
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>@ErrorMessage</div>
+    }
+    else if (ActiveTab == "wmi")
+    {
+        @if (WmiEntries == null || !WmiEntries.Any())
+        {
+            <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Žádné WMI záznamy v databázi.</div>
+        }
+        else
+        {
+            <div class="card border-0 shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Kód</th>
+                                <th>Typ</th>
+                                <th>Země</th>
+                                <th>Region</th>
+                                <th>Výrobci</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var e in WmiEntries)
+                            {
+                                <tr>
+                                    <td><code class="fw-bold">@e.Code</code></td>
+                                    <td><span class="badge bg-primary">@e.CodeType</span></td>
+                                    <td>@(e.CountryISO ?? "—")</td>
+                                    <td>@(e.Region ?? "—")</td>
+                                    <td>
+                                        @foreach (var m in e.Manufacturers.Take(3))
+                                        {
+                                            <span class="badge bg-light text-dark me-1 border">@m.Manufacturer?.OfficialName</span>
+                                        }
+                                        @if (e.Manufacturers.Count > 3)
+                                        {
+                                            <span class="badge bg-secondary">+@(e.Manufacturers.Count - 3)</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        @if (VinInfos == null || !VinInfos.Any())
+        {
+            <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Žádné VIN záznamy v databázi.</div>
+        }
+        else
+        {
+            <div class="card border-0 shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>VIN</th>
+                                <th>Make</th>
+                                <th>Model</th>
+                                <th>Rok</th>
+                                <th>Poznámka</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var v in VinInfos)
+                            {
+                                <tr>
+                                    <td><code class="small">@v.Vin</code></td>
+                                    <td>@(v.Make ?? "—")</td>
+                                    <td>@(v.Model ?? "—")</td>
+                                    <td>@(v.ModelYear ?? "—")</td>
+                                    <td class="text-muted small" style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                        @(v.Note?.Length > 80 ? v.Note[..80] + "…" : v.Note ?? "—")
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private string ActiveTab { get; set; } = "wmi";
+    private bool IsLoading { get; set; }
+    private string? ErrorMessage { get; set; }
+    private List<WmiEntry>? WmiEntries { get; set; }
+    private List<VinInfo>? VinInfos { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task SetTab(string tab)
+    {
+        ActiveTab = tab;
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        IsLoading = true;
+        ErrorMessage = null;
+        try
+        {
+            if (ActiveTab == "wmi")
+                WmiEntries = await DbService.GetWmiEntries(take: 200);
+            else
+                VinInfos = await DbService.GetVins();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}

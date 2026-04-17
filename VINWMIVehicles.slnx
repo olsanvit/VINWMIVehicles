@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VINWMIVehicles/VINWMIVehicles.csproj" />
+  </Folder>
+  <Folder Name="/src/SharedServices/">
+    <Project Path="src/SharedServices/SharedServices/SharedServices.csproj" />
+  </Folder>
+</Solution>

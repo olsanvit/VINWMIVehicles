@@ -1,0 +1,136 @@
+@page "/vin-search"
+@rendermode InteractiveServer
+@inject IVehicleSearchService SearchService
+
+<PageTitle>VIN Search</PageTitle>
+
+<div class="container-fluid">
+    <h2 class="mb-1"><i class="bi bi-car-front me-2 text-warning"></i>VIN Search</h2>
+    <p class="text-muted mb-4">Vehicle Identification Number — 17 znaků</p>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-7">
+                    <label class="form-label fw-semibold">VIN (17 znaků)</label>
+                    <input class="form-control form-control-lg font-monospace"
+                           @bind="Vin"
+                           @bind:event="oninput"
+                           @onkeydown="OnKeyDown"
+                           placeholder="např. TMBAB12345C678901"
+                           maxlength="17" />
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-warning btn-lg w-100" @onclick="Search" disabled="@(IsLoading || Vin.Length != 17)">
+                        @if (IsLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        <i class="bi bi-car-front me-1"></i> Dekódovat
+                    </button>
+                </div>
+            </div>
+            <div class="mt-2">
+                <small class="text-muted">Zadáno: <strong>@Vin.Length</strong>/17 znaků</small>
+            </div>
+        </div>
+    </div>
+
+    @if (ErrorMessage != null)
+    {
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>@ErrorMessage</div>
+    }
+
+    @if (NhtsaResult != null)
+    {
+        var keyVars = new[] { "Make", "Model", "Model Year", "Body Class", "Drive Type",
+                              "Fuel Type - Primary", "Engine Number of Cylinders", "Displacement (L)",
+                              "Manufacturer Name", "Plant Country", "Vehicle Type" };
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-warning text-dark">
+                        <i class="bi bi-database me-2"></i>NHTSA dekódování
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm table-hover mb-0">
+                            <tbody>
+                                @foreach (var v in NhtsaResult.Results.Where(r => keyVars.Contains(r.Variable) && !string.IsNullOrWhiteSpace(r.Value) && r.Value != "Not Applicable"))
+                                {
+                                    <tr>
+                                        <td class="text-muted small fw-semibold" style="width:45%">@v.Variable</td>
+                                        <td class="small"><strong>@v.Value</strong></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                        @if (!NhtsaResult.Results.Any(r => keyVars.Contains(r.Variable) && !string.IsNullOrWhiteSpace(r.Value)))
+                        {
+                            <p class="text-muted">Žádné výsledky z NHTSA.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-warning text-dark">
+                        <i class="bi bi-robot me-2"></i>AI Analýza
+                    </div>
+                    <div class="card-body">
+                        <p style="white-space: pre-wrap;">@AiResponse</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (SavedVin != null)
+        {
+            <div class="alert alert-success mt-3">
+                <i class="bi bi-check-circle me-2"></i>Uloženo do databáze (VIN: <strong>@SavedVin.Vin</strong>)
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private string Vin { get; set; } = "";
+    private bool IsLoading { get; set; }
+    private string? ErrorMessage { get; set; }
+    private SharedServices.Models.Car.VinInfo? SavedVin { get; set; }
+    private VINWMIVehicles.Models.NhtsaVinResponse? NhtsaResult { get; set; }
+    private string AiResponse { get; set; } = "";
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && Vin.Length == 17)
+            await Search();
+    }
+
+    private async Task Search()
+    {
+        if (Vin.Trim().Length != 17) return;
+        IsLoading = true;
+        ErrorMessage = null;
+        NhtsaResult = null;
+        SavedVin = null;
+        AiResponse = "";
+
+        try
+        {
+            var (nhtsa, ai, saved) = await SearchService.SearchVinAsync(Vin.Trim().ToUpperInvariant());
+            NhtsaResult = nhtsa;
+            AiResponse = ai;
+            SavedVin = saved;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}

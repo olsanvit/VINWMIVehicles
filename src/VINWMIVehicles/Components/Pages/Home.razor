@@ -1,0 +1,90 @@
+@page "/"
+@rendermode InteractiveServer
+
+<PageTitle>VINWMIVehicles — Dashboard</PageTitle>
+
+<div class="container-fluid">
+    <h1 class="mb-4"><i class="bi bi-car-front me-2"></i>VINWMIVehicles</h1>
+    <p class="text-muted mb-4">Vyhledávání informací o vozidlech pomocí NHTSA API a AI analýzy.</p>
+
+    <div class="row g-4">
+        <div class="col-md-6 col-xl-3">
+            <a href="wmi-search" class="text-decoration-none">
+                <div class="card h-100 border-0 shadow-sm hover-card">
+                    <div class="card-body text-center p-4">
+                        <i class="bi bi-search display-4 text-primary mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold">WMI Search</h5>
+                        <p class="card-text text-muted small">World Manufacturer Identifier (3 znaky) — identifikace výrobce vozidla</p>
+                        <span class="badge bg-primary">3 znaky</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <a href="wmc-search" class="text-decoration-none">
+                <div class="card h-100 border-0 shadow-sm hover-card">
+                    <div class="card-body text-center p-4">
+                        <i class="bi bi-upc-scan display-4 text-success mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold">WMC Search</h5>
+                        <p class="card-text text-muted small">World Manufacturer Code (6 znaků) — rozšířený kód výrobce</p>
+                        <span class="badge bg-success">6 znaků</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <a href="vin-search" class="text-decoration-none">
+                <div class="card h-100 border-0 shadow-sm hover-card">
+                    <div class="card-body text-center p-4">
+                        <i class="bi bi-car-front display-4 text-warning mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold">VIN Search</h5>
+                        <p class="card-text text-muted small">Vehicle Identification Number (17 znaků) — kompletní dekódování vozidla</p>
+                        <span class="badge bg-warning text-dark">17 znaků</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <a href="custom-vin" class="text-decoration-none">
+                <div class="card h-100 border-0 shadow-sm hover-card">
+                    <div class="card-body text-center p-4">
+                        <i class="bi bi-pencil-square display-4 text-danger mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold">Custom VIN</h5>
+                        <p class="card-text text-muted small">Libovolný VIN nebo kód — AI analýza bez omezení délky</p>
+                        <span class="badge bg-danger">AI only</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <a href="history" class="text-decoration-none">
+                <div class="card border-0 shadow-sm hover-card">
+                    <div class="card-body d-flex align-items-center p-4">
+                        <i class="bi bi-clock-history display-5 text-secondary me-4"></i>
+                        <div>
+                            <h5 class="card-title fw-bold mb-1">Historie vyhledávání</h5>
+                            <p class="card-text text-muted small mb-0">Přehled všech provedených vyhledávání WMI/WMC a VIN uložených v databázi</p>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-card {
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        cursor: pointer;
+    }
+    .hover-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.15) !important;
+    }
+</style>
