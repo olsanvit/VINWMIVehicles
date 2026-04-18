@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/VINWMIVehicles/VINWMIVehicles.csproj" />
+    <Project Path="src/VINWMIVehicles.Web/VINWMIVehicles.Web.csproj" />
+    <Project Path="src/VINWMIVehicles.Mobile/VINWMIVehicles.Mobile.csproj" />
   </Folder>
   <Folder Name="/src/SharedServices/">
     <Project Path="src/SharedServices/SharedServices/SharedServices.csproj" />
