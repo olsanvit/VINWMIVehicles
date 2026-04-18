@@ -8,6 +8,7 @@ using SharedServices;
 using SharedServices.Services;
 using System.Security.Claims;
 using VINWMIVehicles.Components;
+using VINWMIVehicles.Data;
 using VINWMIVehicles.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,6 +36,13 @@ builder.Services.AddDbContext<AppDbContextVin>(o => o.UseNpgsql(connectionString
 
 // Vehicle data DB
 builder.Services.AddDbContextFactory<AppDbContextCar>(o => o.UseNpgsql(connectionString));
+
+// Vehicle domain DB (VIN, WMI, manufacturers, brands, models)
+builder.Services.AddDbContextFactory<VehicleDbContext>(o =>
+    o.UseNpgsql(connectionString,
+        npgsql => npgsql.CommandTimeout(60)));
+builder.Services.AddScoped<VehicleDbContext>(sp =>
+    sp.GetRequiredService<IDbContextFactory<VehicleDbContext>>().CreateDbContext());
 
 // Identity + Google OAuth (Google keys optional — from appsettings.Development.json)
 builder.Services.AddMabAuth<AppDbContextVin>(builder.Configuration);
