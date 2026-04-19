@@ -38,11 +38,11 @@ builder.Services.AddDbContext<AppDbContextVin>(o => o.UseNpgsql(connectionString
 builder.Services.AddDbContextFactory<AppDbContextCar>(o => o.UseNpgsql(connectionString));
 
 // Vehicle domain DB (VIN, WMI, manufacturers, brands, models)
-builder.Services.AddDbContextFactory<VehicleDbContext>(o =>
+builder.Services.AddDbContextFactory<AppDbContextVehicle>(o =>
     o.UseNpgsql(connectionString,
         npgsql => npgsql.CommandTimeout(60)));
-builder.Services.AddScoped<VehicleDbContext>(sp =>
-    sp.GetRequiredService<IDbContextFactory<VehicleDbContext>>().CreateDbContext());
+builder.Services.AddScoped<AppDbContextVehicle>(sp =>
+    sp.GetRequiredService<IDbContextFactory<AppDbContextVehicle>>().CreateDbContext());
 
 // Identity + Google OAuth (Google keys optional — from appsettings.Development.json)
 builder.Services.AddMabAuth<AppDbContextVin>(builder.Configuration);
