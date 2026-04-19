@@ -1,3 +1,7 @@
+using ApexCharts;
+using Blazored.LocalStorage;
+using Blazored.Modal;
+using Blazored.SessionStorage;
 using MercenariesAndBeasts.Infrastructure;
 using MercenariesAndBeasts.Infrastructure.Auth;
 using Microsoft.AspNetCore.Identity;
@@ -46,6 +50,14 @@ builder.Services.AddScoped<AppDbContextVehicle>(sp =>
 
 // Identity + Google OAuth (Google keys optional — from appsettings.Development.json)
 builder.Services.AddMabAuth<AppDbContextVin>(builder.Configuration);
+
+// Shared UI services
+builder.Services.AddScoped<AlertService>();
+builder.Services.AddSingleton<ThemeService>(_ => new ThemeService(builder.Configuration));
+builder.Services.AddBlazoredModal();
+builder.Services.AddBlazoredLocalStorage();
+builder.Services.AddBlazoredSessionStorage();
+builder.Services.AddApexCharts();
 
 // Vehicle services
 builder.Services.AddScoped<ToastService>();
