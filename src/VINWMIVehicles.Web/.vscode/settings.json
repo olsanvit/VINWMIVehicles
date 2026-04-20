@@ -1,0 +1,5 @@
+{
+    "dotnet.defaultSolution": "${workspaceFolder}/VINWMIVehicles.sln",
+    "omnisharp.defaultLaunchSolution": "${workspaceFolder}/VINWMIVehicles.sln",
+    "omnisharp.useModernNet": true
+}

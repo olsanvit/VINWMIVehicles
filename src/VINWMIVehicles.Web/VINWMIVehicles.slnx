@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="../SharedServices/SharedServices/SharedServices.csproj" />
+  <Project Path="VINWMIVehicles.Web.csproj" />
+</Solution>
