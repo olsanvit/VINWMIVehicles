@@ -6,7 +6,10 @@ using MercenariesAndBeasts.Infrastructure;
 using MercenariesAndBeasts.Infrastructure.Auth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Serilog;
+using Serilog.Exceptions;
+using Serilog.Sinks.PostgreSQL.ColumnWriters;
 using Services;
 using SharedServices;
 using SharedServices.Services;
@@ -17,13 +20,30 @@ using VINWMIVehicles.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "Logs"));
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
     .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Information)
     .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
-    .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}")
-    .WriteTo.File("Logs/log-.txt", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30,
-                  outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}")
+    .Enrich.WithMachineName()
+    .Enrich.WithProcessId()
+    .Enrich.WithThreadId()
+    .Enrich.FromLogContext()
+    .Enrich.WithExceptionDetails()
+    .WriteTo.Console(
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File(
+        "Logs/log-.txt",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30,
+        shared: true,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}")
+    .WriteTo.PostgreSQL(
+        connectionString: builder.Configuration.GetConnectionString("DefaultConnection") ?? "",
+        tableName: "Logs",
+        columnOptions: (IDictionary<string, ColumnWriterBase>?)null,
+        needAutoCreateTable: true,
+        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Warning)
     .CreateLogger();
 builder.Host.UseSerilog();
 
@@ -32,18 +52,45 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddControllers();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
 var openAiKey = builder.Configuration["OpenAI:ApiKey"] ?? "";
 
 // Identity DB (AppUser, roles, external logins)
-builder.Services.AddDbContext<AppDbContextVin>(o => o.UseNpgsql(connectionString));
+builder.Services.AddDbContext<AppDbContextVin>(o => o.UseNpgsql(
+    builder.Configuration.GetConnectionString("DefaultConnection"),
+    npgsql => npgsql.EnableRetryOnFailure(
+        maxRetryCount: 5,
+        maxRetryDelay: TimeSpan.FromSeconds(5),
+        errorCodesToAdd: null)));
 
-// Vehicle data DB
-builder.Services.AddDbContextFactory<AppDbContextCar>(o => o.UseNpgsql(connectionString));
+// Vehicle data DB — NpgsqlDataSourceBuilder pattern
+var cs = "";
+#if DEBUG
+cs = builder.Configuration.GetConnectionString("DefaultConnectionQNAP");
+#else
+cs = builder.Configuration.GetConnectionString("DefaultConnection");
+#endif
+var dsb = new NpgsqlDataSourceBuilder(cs);
+dsb.EnableDynamicJson();
+var dataSource = dsb.Build();
+builder.Services.AddDbContextFactory<AppDbContextCar>(options =>
+    options.UseNpgsql(
+        dataSource,
+        npgsqlOptions =>
+        {
+            npgsqlOptions.MigrationsAssembly("SharedServices");
+            npgsqlOptions.CommandTimeout(120);
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(5),
+                errorCodesToAdd: null);
+        })
+    .EnableSensitiveDataLogging()
+    .EnableDetailedErrors());
 
 // Vehicle domain DB (VIN, WMI, manufacturers, brands, models)
 builder.Services.AddDbContextFactory<AppDbContextVehicle>(o =>
-    o.UseNpgsql(connectionString,
+    o.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
         npgsql => npgsql.CommandTimeout(60)));
 builder.Services.AddScoped<AppDbContextVehicle>(sp =>
     sp.GetRequiredService<IDbContextFactory<AppDbContextVehicle>>().CreateDbContext());
@@ -68,6 +115,15 @@ builder.Services.AddScoped<ChatGptAsker>(_ => new ChatGptAsker(apiKey: openAiKey
 builder.Services.AddHttpClient<NhtsaService>();
 builder.Services.AddScoped<INhtsaService, NhtsaService>();
 builder.Services.AddScoped<IVehicleSearchService, VehicleSearchService>();
+
+AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+    Log.Fatal(e.ExceptionObject as Exception, "UNHANDLED AppDomain exception");
+
+TaskScheduler.UnobservedTaskException += (sender, e) =>
+{
+    Log.Fatal(e.Exception, "UNOBSERVED task exception");
+    e.SetObserved();
+};
 
 var app = builder.Build();
 
@@ -145,4 +201,18 @@ app.MapGet("/Identity/Account/ExternalLogin/Callback", async (
     return Results.Redirect("/login?error=external");
 });
 
-app.Run();
+app.Lifetime.ApplicationStopping.Register(() =>
+    Log.Warning("Application stopping — flushing logs..."));
+
+try
+{
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Host terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
