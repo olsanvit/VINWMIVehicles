@@ -2,10 +2,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "VINWMIVehicles.Web",
-            "type": "dotnet",
+            "name": "Launch VINWMIVehicles.Web",
+            "type": "coreclr",
             "request": "launch",
-            "projectPath": "${workspaceFolder}/src/VINWMIVehicles.Web/VINWMIVehicles.Web.csproj"
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/VINWMIVehicles.Web/bin/Debug/net10.0/VINWMIVehicles.Web.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/VINWMIVehicles.Web",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            },
+            "console": "integratedTerminal"
         }
     ]
 }
