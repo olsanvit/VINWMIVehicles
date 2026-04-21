@@ -15,7 +15,6 @@ using SharedServices;
 using SharedServices.Services;
 using System.Security.Claims;
 using VINWMIVehicles.Components;
-using VINWMIVehicles.Data;
 using VINWMIVehicles.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -54,15 +53,7 @@ builder.Services.AddControllers();
 
 var openAiKey = builder.Configuration["OpenAI:ApiKey"] ?? "";
 
-// Identity DB (AppUser, roles, external logins)
-builder.Services.AddDbContext<AppDbContextVin>(o => o.UseNpgsql(
-    builder.Configuration.GetConnectionString("DefaultConnection"),
-    npgsql => npgsql.EnableRetryOnFailure(
-        maxRetryCount: 5,
-        maxRetryDelay: TimeSpan.FromSeconds(5),
-        errorCodesToAdd: null)));
-
-// Vehicle data DB — NpgsqlDataSourceBuilder pattern
+// Vehicle + Identity DB — NpgsqlDataSourceBuilder (EnableDynamicJson + retry)
 var cs = "";
 #if DEBUG
 cs = builder.Configuration.GetConnectionString("DefaultConnectionQNAP");
@@ -72,7 +63,7 @@ cs = builder.Configuration.GetConnectionString("DefaultConnection");
 var dsb = new NpgsqlDataSourceBuilder(cs);
 dsb.EnableDynamicJson();
 var dataSource = dsb.Build();
-builder.Services.AddDbContextFactory<AppDbContextCar>(options =>
+builder.Services.AddDbContextFactory<AppDbContextVin>(options =>
     options.UseNpgsql(
         dataSource,
         npgsqlOptions =>
@@ -86,14 +77,8 @@ builder.Services.AddDbContextFactory<AppDbContextCar>(options =>
         })
     .EnableSensitiveDataLogging()
     .EnableDetailedErrors());
-
-// Vehicle domain DB (VIN, WMI, manufacturers, brands, models)
-builder.Services.AddDbContextFactory<AppDbContextVehicle>(o =>
-    o.UseNpgsql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        npgsql => npgsql.CommandTimeout(60)));
-builder.Services.AddScoped<AppDbContextVehicle>(sp =>
-    sp.GetRequiredService<IDbContextFactory<AppDbContextVehicle>>().CreateDbContext());
+builder.Services.AddScoped<AppDbContextVin>(sp =>
+    sp.GetRequiredService<IDbContextFactory<AppDbContextVin>>().CreateDbContext());
 
 // Identity + Google OAuth (Google keys optional — from appsettings.Development.json)
 builder.Services.AddMabAuth<AppDbContextVin>(builder.Configuration);
@@ -108,8 +93,8 @@ builder.Services.AddApexCharts();
 
 // Vehicle services
 builder.Services.AddScoped<ToastService>();
-builder.Services.AddScoped<ErrorService<AppDbContextCar>>();
-builder.Services.AddScoped<EfCoreService<AppDbContextCar>>();
+builder.Services.AddScoped<ErrorService<AppDbContextVin>>();
+builder.Services.AddScoped<EfCoreService<AppDbContextVin>>();
 builder.Services.AddScoped<ChatGPTWMI>();
 builder.Services.AddScoped<ChatGptAsker>(_ => new ChatGptAsker(apiKey: openAiKey, isSimple: false));
 builder.Services.AddHttpClient<NhtsaService>();
