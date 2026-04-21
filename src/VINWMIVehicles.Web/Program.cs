@@ -101,6 +101,10 @@ builder.Services.AddHttpClient<NhtsaService>();
 builder.Services.AddScoped<INhtsaService, NhtsaService>();
 builder.Services.AddScoped<IVehicleSearchService, VehicleSearchService>();
 
+// VIN Randomizer
+builder.Services.AddScoped<VinRandomizerService>();
+builder.Services.AddHostedService<VinRandomizerHostedService>();
+
 AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
     Log.Fatal(e.ExceptionObject as Exception, "UNHANDLED AppDomain exception");
 
