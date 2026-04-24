@@ -206,8 +206,9 @@ public class VinRandomizerService
     {
         // WMC nemá vlastní AI result tabulku — používáme WmiAiResult s FK na WmiAssignment
         // Místo toho hledáme odpovídající WmiAssignment podle kódu
+        var wmiPrefix = code[..Math.Min(3, code.Length)];
         var assignment = await db.WmiAssignments
-            .FirstOrDefaultAsync(w => w.Wmi == code[..Math.Min(3, code.Length)], ct);
+            .FirstOrDefaultAsync(w => w.Wmi == wmiPrefix, ct);
 
         if (assignment is null)
             return;
