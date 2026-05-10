@@ -50,11 +50,11 @@ public class VinRandomizerService
         await using var db = await _factory.CreateDbContextAsync(ct);
 
         var wmiCodes = await db.WmiAssignments
-            .Select(w => new { w.Id, w.Wmi })
+            .Select(w => new { w.Guid, w.Wmi })
             .ToListAsync(ct);
 
         var wmcCodes = await db.WmcEntries
-            .Select(w => new { w.Id, w.Code })
+            .Select(w => new { w.Guid, w.Code })
             .ToListAsync(ct);
 
         if (wmiCodes.Count == 0)
@@ -80,7 +80,7 @@ public class VinRandomizerService
             try
             {
                 var pick = wmiCodes[rng.Next(wmiCodes.Count)];
-                await AskWmiAsync(db, pick.Id, pick.Wmi, extended: false, ct);
+                await AskWmiAsync(db, pick.Guid, pick.Wmi, extended: false, ct);
             }
             catch (Exception ex) { _log.LogWarning(ex, "VinRandomizer: chyba WMI dotaz #{I}", i); }
         }
@@ -92,7 +92,7 @@ public class VinRandomizerService
             try
             {
                 var pick = wmiCodes[rng.Next(wmiCodes.Count)];
-                await AskWmiAsync(db, pick.Id, pick.Wmi, extended: true, ct);
+                await AskWmiAsync(db, pick.Guid, pick.Wmi, extended: true, ct);
             }
             catch (Exception ex) { _log.LogWarning(ex, "VinRandomizer: chyba WMI Extended dotaz #{I}", i); }
         }
@@ -106,7 +106,7 @@ public class VinRandomizerService
                 try
                 {
                     var pick = wmcCodes[rng.Next(wmcCodes.Count)];
-                    await AskWmcAsync(db, pick.Id, pick.Code, ct);
+                    await AskWmcAsync(db, pick.Guid, pick.Code, ct);
                 }
                 catch (Exception ex) { _log.LogWarning(ex, "VinRandomizer: chyba WMC dotaz #{I}", i); }
             }
@@ -137,7 +137,6 @@ public class VinRandomizerService
 
         var record = new VinRecord
         {
-            Id  = Guid.NewGuid(),
             Vin = vin,
             Wmi = wmi,
             Vds = vds,
@@ -154,8 +153,7 @@ public class VinRandomizerService
 
         db.VinAiResults.Add(new VinAiResult
         {
-            Id          = Guid.NewGuid(),
-            VinRecordId = record.Id,
+            VinRecordId = record.Guid,
             Query       = query,
             Response    = response,
             AiModel     = "gpt-5-mini",
@@ -185,7 +183,6 @@ public class VinRandomizerService
 
         db.WmiAiResults.Add(new WmiAiResult
         {
-            Id              = Guid.NewGuid(),
             WmiAssignmentId = wmiAssignmentId,
             Query           = query,
             Response        = response,
@@ -221,8 +218,7 @@ public class VinRandomizerService
 
         db.WmiAiResults.Add(new WmiAiResult
         {
-            Id              = Guid.NewGuid(),
-            WmiAssignmentId = assignment.Id,
+            WmiAssignmentId = assignment.Guid,
             Query           = query,
             Response        = response,
             AiModel         = "gpt-5-mini",
