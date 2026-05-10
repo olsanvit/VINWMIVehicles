@@ -48,6 +48,7 @@ builder.Host.UseSerilog();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddRazorPages();
 
 builder.Services.AddControllers();
 
@@ -63,25 +64,16 @@ cs = builder.Configuration.GetConnectionString("DefaultConnection");
 var dsb = new NpgsqlDataSourceBuilder(cs);
 dsb.EnableDynamicJson();
 var dataSource = dsb.Build();
-builder.Services.AddDbContextFactory<AppDbContextVin>(options =>
-    options.UseNpgsql(
-        dataSource,
-        npgsqlOptions =>
-        {
-            npgsqlOptions.MigrationsAssembly("SharedServices");
-            npgsqlOptions.CommandTimeout(120);
-            npgsqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(5),
-                errorCodesToAdd: null);
-        })
-    .EnableSensitiveDataLogging()
-    .EnableDetailedErrors());
-builder.Services.AddScoped<AppDbContextVin>(sp =>
-    sp.GetRequiredService<IDbContextFactory<AppDbContextVin>>().CreateDbContext());
 
-// Identity + Google OAuth (Google keys optional — from appsettings.Development.json)
-builder.Services.AddMabAuth<AppDbContextVin>(builder.Configuration);
+// AddMabDbContext = AddDbContextFactory + scoped AddDbContext (Identity potřebuje scoped)
+builder.Services.AddMabDbContext<AppDbContextVehicle>(dataSource);
+
+// Identity + Google OAuth (Google keys optional — z appsettings.Development.json)
+builder.Services.AddMabAuth<AppDbContextVehicle>(builder.Configuration);
+
+// Identity UI vyžaduje IEmailSender — no-op implementace (maily zatím neposíláme)
+builder.Services.AddSingleton<Microsoft.AspNetCore.Identity.UI.Services.IEmailSender,
+    NoOpEmailSender>();
 
 // Shared UI services
 builder.Services.AddScoped<AlertService>();
@@ -93,8 +85,8 @@ builder.Services.AddApexCharts();
 
 // Vehicle services
 builder.Services.AddScoped<ToastService>();
-builder.Services.AddScoped<ErrorService<AppDbContextVin>>();
-builder.Services.AddScoped<EfCoreService<AppDbContextVin>>();
+builder.Services.AddScoped<ErrorService<AppDbContextVehicle>>();
+builder.Services.AddScoped<EfCoreService<AppDbContextVehicle>>();
 builder.Services.AddScoped<ChatGPTWMI>();
 builder.Services.AddScoped<ChatGptAsker>(_ => new ChatGptAsker(apiKey: openAiKey, isSimple: false));
 builder.Services.AddHttpClient<NhtsaService>();
@@ -104,6 +96,8 @@ builder.Services.AddScoped<IVehicleSearchService, VehicleSearchService>();
 // VIN Randomizer
 builder.Services.AddScoped<VinRandomizerService>();
 builder.Services.AddHostedService<VinRandomizerHostedService>();
+
+builder.Services.AddHttpContextAccessor();
 
 AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
     Log.Fatal(e.ExceptionObject as Exception, "UNHANDLED AppDomain exception");
@@ -122,15 +116,20 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 
+app.MapStaticAssets();
+app.UseStaticFiles();
+app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
-app.MapStaticAssets();
-app.MapControllers();
+app.MapRazorPages();   // Identity UI scaffolded pages
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddAdditionalAssemblies(typeof(MercenariesAndBeasts.Infrastructure.Components.Account.Login).Assembly);
+
+app.MapControllers();
 
 // ── Google OAuth external login endpoints ──────────────────────────────────
 
@@ -190,6 +189,18 @@ app.MapGet("/Identity/Account/ExternalLogin/Callback", async (
     return Results.Redirect("/login?error=external");
 });
 
+// ── Migrate DB + Seed admin ────────────────────────────────────────────────
+using (var scope = app.Services.CreateScope())
+{
+    var services    = scope.ServiceProvider;
+    var db          = services.GetRequiredService<AppDbContextVehicle>();
+    var userManager = services.GetRequiredService<UserManager<AppUser>>();
+    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+
+    await db.Database.MigrateAsync();
+    await SeedAdminAsync(userManager, roleManager);
+}
+
 app.Lifetime.ApplicationStopping.Register(() =>
     Log.Warning("Application stopping — flushing logs..."));
 
@@ -204,4 +215,65 @@ catch (Exception ex)
 finally
 {
     Log.CloseAndFlush();
+}
+
+// ── Seed helpers ──────────────────────────────────────────────────────────
+static async Task SeedAdminAsync(
+    UserManager<AppUser> userManager,
+    RoleManager<IdentityRole> roleManager)
+{
+    const string adminRole = "Admin";
+
+    if (!await roleManager.RoleExistsAsync(adminRole))
+        await roleManager.CreateAsync(new IdentityRole(adminRole));
+
+    await EnsureAdminAsync(userManager, adminRole,
+        email: "admin@local",
+        username: "admin",
+        password: "Admin123.");
+
+    await EnsureAdminAsync(userManager, adminRole,
+        email: "olsanskyvitek@gmail.com",
+        username: "vitek",
+        password: "Vitek575");
+}
+
+static async Task EnsureAdminAsync(
+    UserManager<AppUser> userManager,
+    string adminRole,
+    string email,
+    string username,
+    string password)
+{
+    var user = await userManager.FindByEmailAsync(email);
+
+    if (user is null)
+    {
+        user = new AppUser
+        {
+            UserName = username,
+            Email = email,
+            EmailConfirmed = true,
+            IsAdmin = true
+        };
+        var result = await userManager.CreateAsync(user, password);
+        if (!result.Succeeded)
+            throw new Exception($"Failed to create user {email}: " +
+                string.Join(", ", result.Errors.Select(e => e.Description)));
+    }
+    else if (!user.IsAdmin)
+    {
+        user.IsAdmin = true;
+        await userManager.UpdateAsync(user);
+    }
+
+    if (!await userManager.IsInRoleAsync(user, adminRole))
+        await userManager.AddToRoleAsync(user, adminRole);
+}
+
+// ── No-op IEmailSender ────────────────────────────────────────────────────
+file sealed class NoOpEmailSender : Microsoft.AspNetCore.Identity.UI.Services.IEmailSender
+{
+    public Task SendEmailAsync(string email, string subject, string htmlMessage)
+        => Task.CompletedTask;
 }

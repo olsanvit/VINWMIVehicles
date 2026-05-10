@@ -10,13 +10,13 @@ public class VehicleSearchService : IVehicleSearchService
     private readonly INhtsaService _nhtsa;
     private readonly ChatGPTWMI _wmiGpt;
     private readonly ChatGptAsker _gpt;
-    private readonly EfCoreService<AppDbContextVin> _db;
+    private readonly EfCoreService<AppDbContextVehicle> _db;
 
     public VehicleSearchService(
         INhtsaService nhtsa,
         ChatGPTWMI wmiGpt,
         ChatGptAsker gpt,
-        EfCoreService<AppDbContextVin> db)
+        EfCoreService<AppDbContextVehicle> db)
     {
         _nhtsa = nhtsa;
         _wmiGpt = wmiGpt;

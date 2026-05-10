@@ -19,7 +19,7 @@ namespace VINWMIVehicles.Services;
 /// </summary>
 public class VinRandomizerService
 {
-    private readonly IDbContextFactory<AppDbContextVin> _factory;
+    private readonly IDbContextFactory<AppDbContextVehicle> _factory;
     private readonly ChatGptAsker _gpt;
     private readonly ILogger<VinRandomizerService> _log;
 
@@ -27,7 +27,7 @@ public class VinRandomizerService
         "ABCDEFGHJKLMNPRSTUVWXYZ0123456789".ToCharArray(); // bez I, O, Q
 
     public VinRandomizerService(
-        IDbContextFactory<AppDbContextVin> factory,
+        IDbContextFactory<AppDbContextVehicle> factory,
         ChatGptAsker gpt,
         ILogger<VinRandomizerService> log)
     {
@@ -121,7 +121,7 @@ public class VinRandomizerService
     // ────────────────────────────────────────────────────────────────────────
 
     private async Task GenerateAndSaveVinAsync(
-        AppDbContextVin db,
+        AppDbContextVehicle db,
         List<string> wmiPool,
         Random rng,
         CancellationToken ct)
@@ -166,7 +166,7 @@ public class VinRandomizerService
     // ────────────────────────────────────────────────────────────────────────
 
     private async Task AskWmiAsync(
-        AppDbContextVin db,
+        AppDbContextVehicle db,
         Guid wmiAssignmentId,
         string wmi,
         bool extended,
@@ -196,7 +196,7 @@ public class VinRandomizerService
     // ────────────────────────────────────────────────────────────────────────
 
     private async Task AskWmcAsync(
-        AppDbContextVin db,
+        AppDbContextVehicle db,
         Guid wmcEntryId,
         string code,
         CancellationToken ct)

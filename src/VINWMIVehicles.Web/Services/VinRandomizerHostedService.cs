@@ -45,7 +45,7 @@ public class VinRandomizerHostedService : BackgroundService
     {
         await using var scope = _scopes.CreateAsyncScope();
         var db = await scope.ServiceProvider
-            .GetRequiredService<IDbContextFactory<AppDbContextVin>>()
+            .GetRequiredService<IDbContextFactory<AppDbContextVehicle>>()
             .CreateDbContextAsync(ct);
 
         var taskName = WebsiteTaskName.VinRandomizerDaily.ToString();
