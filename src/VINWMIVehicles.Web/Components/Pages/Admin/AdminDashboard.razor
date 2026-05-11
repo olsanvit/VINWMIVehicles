@@ -5,81 +5,180 @@
 @using MercenariesAndBeasts.Infrastructure
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
+@using SharedServices.Models.VINWMIVehicles.Vin
+@using SharedServices.Models.VINWMIVehicles.AI
 @inject UserManager<AppUser> UserManager
 @inject IDbContextFactory<AppDbContextVehicle> DbFactory
 @inject NavigationManager Nav
 
 <PageTitle>Admin — VINWMIVehicles</PageTitle>
 
-<div class="container-fluid py-4">
-    <h2 class="mb-4">Admin Dashboard — VINWMIVehicles</h2>
-    @if (_loading)
-    {
-        <div class="text-center py-5"><div class="spinner-border" role="status"></div></div>
-    }
-    else
-    {
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <div class="card text-center border-primary">
-                    <div class="card-body">
-                        <div class="fs-2 fw-bold text-primary">@_userCount</div>
-                        <div class="text-muted small">Uživatelé</div>
-                    </div>
+<div class="dash-switcher mb-3">
+    <h4 class="m-0">Admin — VINWMIVehicles</h4>
+</div>
+
+@if (_loading)
+{
+    <div class="text-center py-5"><div class="spinner-border" role="status"></div></div>
+}
+else
+{
+    <!-- Statistiky -->
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-2">
+            <div class="card text-center">
+                <div class="card-body py-2">
+                    <div class="fs-4 fw-bold text-primary">@_userCount</div>
+                    <div class="text-muted small">Uživatelé</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card text-center border-info">
-                    <div class="card-body">
-                        <div class="fs-2 fw-bold text-info">@_vinCount</div>
-                        <div class="text-muted small">VIN záznamy</div>
-                    </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card text-center">
+                <div class="card-body py-2">
+                    <div class="fs-4 fw-bold text-info">@_vinCount</div>
+                    <div class="text-muted small">VIN záznamy</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card text-center border-success">
-                    <div class="card-body">
-                        <div class="fs-2 fw-bold text-success">@_wmiCount</div>
-                        <div class="text-muted small">WMI záznamy</div>
-                    </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card text-center">
+                <div class="card-body py-2">
+                    <div class="fs-4 fw-bold text-success">@_wmiCount</div>
+                    <div class="text-muted small">WMI přiřazení</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card text-center border-warning">
-                    <div class="card-body">
-                        <div class="fs-2 fw-bold text-warning">@_aiResultCount</div>
-                        <div class="text-muted small">AI výsledky</div>
-                    </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card text-center">
+                <div class="card-body py-2">
+                    <div class="fs-4 fw-bold text-warning">@_aiVinCount</div>
+                    <div class="text-muted small">AI VIN výsledky</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card text-center">
+                <div class="card-body py-2">
+                    <div class="fs-4 fw-bold text-danger">@_manufacturerCount</div>
+                    <div class="text-muted small">Výrobci (WMI)</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card text-center">
+                <div class="card-body py-2">
+                    <div class="fs-4 fw-bold text-secondary">@_brandCount</div>
+                    <div class="text-muted small">Značky (Car)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Uživatelé -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header fw-bold">Uživatelé (@_userCount)</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-secondary">
+                            <tr><th>Email</th><th>Role</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var u in _users)
+                            {
+                                <tr>
+                                    <td class="small">@u.Email</td>
+                                    <td>
+                                        @if (u.IsAdmin)
+                                        { <span class="badge bg-warning text-dark">Admin</span> }
+                                        else
+                                        { <span class="badge bg-secondary">User</span> }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header"><strong>Uživatelé</strong></div>
-            <div class="card-body p-0">
-                <table class="table table-sm table-hover mb-0">
-                    <thead class="table-light">
-                        <tr><th>Email</th><th>Admin</th></tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var u in _users)
-                        {
-                            <tr>
-                                <td>@u.Email</td>
-                                <td>@(u.IsAdmin ? "✓" : "")</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+        <!-- Poslední VIN dotazy -->
+        <div class="col-md-8">
+            <div class="card h-100">
+                <div class="card-header fw-bold">Posledních 20 VIN dotazů</div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-secondary">
+                                <tr>
+                                    <th>VIN</th>
+                                    <th>WMI</th>
+                                    <th>Rok</th>
+                                    <th>Platný</th>
+                                    <th>Datum</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var v in _recentVins)
+                                {
+                                    <tr>
+                                        <td><code class="small">@v.Vin</code></td>
+                                        <td><code class="small">@v.Wmi</code></td>
+                                        <td class="small">@v.ModelYear</td>
+                                        <td>
+                                            @if (v.IsValid)
+                                            { <span class="badge bg-success">✓</span> }
+                                            else
+                                            { <span class="badge bg-danger">✗</span> }
+                                        </td>
+                                        <td class="small text-muted">@v.CreatedAt.ToString("dd.MM.yy HH:mm")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
-    }
-</div>
+    </div>
+
+    <!-- AI výsledky -->
+    <div class="row g-3 mt-0">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header fw-bold">Posledních 10 AI VIN výsledků</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-secondary">
+                            <tr><th>Dotaz (Query)</th><th>AI odpověď (zkráceno)</th><th>Model</th><th>Ověřen</th><th>Datum</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var a in _recentAiVin)
+                            {
+                                <tr>
+                                    <td><code class="small">@a.Query</code></td>
+                                    <td class="small text-truncate" style="max-width:300px">@a.Response</td>
+                                    <td class="small text-muted">@a.AiModel</td>
+                                    <td>@(a.IsVerified ? "✓" : "")</td>
+                                    <td class="small text-muted">@a.CreatedAt.ToString("dd.MM.yy")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     private bool _loading = true;
-    private int _userCount, _vinCount, _wmiCount, _aiResultCount;
+    private int _userCount, _vinCount, _wmiCount, _aiVinCount, _manufacturerCount, _brandCount;
     private List<AppUser> _users = new();
+    private List<VinRecord> _recentVins = new();
+    private List<VinAiResult> _recentAiVin = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -87,9 +186,23 @@
         _userCount = _users.Count;
 
         await using var db = await DbFactory.CreateDbContextAsync();
-        _vinCount      = await db.VinRecords.CountAsync();
-        _wmiCount      = await db.WmiAssignments.CountAsync();
-        _aiResultCount = await db.VinAiResults.CountAsync();
+
+        _vinCount          = await db.VinRecords.CountAsync();
+        _wmiCount          = await db.WmiAssignments.CountAsync();
+        _aiVinCount        = await db.VinAiResults.CountAsync();
+        _manufacturerCount = await db.WmiManufacturers.CountAsync();
+        _brandCount        = await db.Brands.CountAsync();
+
+        _recentVins = await db.VinRecords
+            .OrderByDescending(v => v.CreatedAt)
+            .Take(20)
+            .ToListAsync();
+
+        _recentAiVin = await db.VinAiResults
+            .OrderByDescending(a => a.CreatedAt)
+            .Take(10)
+            .ToListAsync();
+
         _loading = false;
     }
 }
