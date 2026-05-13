@@ -11,17 +11,20 @@ public class VehicleSearchService : IVehicleSearchService
     private readonly ChatGPTWMI _wmiGpt;
     private readonly ChatGptAsker _gpt;
     private readonly EfCoreService<AppDbContextVehicle> _db;
+    private readonly ILogger<VehicleSearchService> _log;
 
     public VehicleSearchService(
         INhtsaService nhtsa,
         ChatGPTWMI wmiGpt,
         ChatGptAsker gpt,
-        EfCoreService<AppDbContextVehicle> db)
+        EfCoreService<AppDbContextVehicle> db,
+        ILogger<VehicleSearchService> log)
     {
         _nhtsa = nhtsa;
         _wmiGpt = wmiGpt;
         _gpt = gpt;
         _db = db;
+        _log = log;
     }
 
     public async Task<(NhtsaWmiResponse Nhtsa, string AiResponse, WmiEntry? Saved)> SearchWmiAsync(string code, WmiCodeType codeType)
@@ -64,7 +67,10 @@ public class VehicleSearchService : IVehicleSearchService
 
             saved = await _db.AddUpdateWmiAndManufacturersAsync(entry);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Failed to save WMI entry for code {Code}.", code);
+        }
 
         return (nhtsa, aiText, saved);
     }
@@ -98,7 +104,10 @@ public class VehicleSearchService : IVehicleSearchService
             };
             saved = await _db.AddUpdateVinInfo(info);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Failed to save VIN info for VIN {Vin}.", vin);
+        }
 
         return (nhtsa, aiText, saved);
     }
@@ -127,7 +136,10 @@ public class VehicleSearchService : IVehicleSearchService
             };
             saved = await _db.AddUpdateVinInfo(info);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Failed to save custom VIN info for VIN {Vin}.", vin);
+        }
 
         return (aiText, saved);
     }
