@@ -110,6 +110,11 @@ TaskScheduler.UnobservedTaskException += (sender, e) =>
 
 var app = builder.Build();
 
+if (string.IsNullOrWhiteSpace(builder.Configuration["OpenAI:ApiKey"]))
+    Log.Warning("VINWMIVehicles: OpenAI ApiKey is not configured — AI features will fail");
+if (string.IsNullOrWhiteSpace(builder.Configuration["Authentication:Google:ClientId"]))
+    Log.Warning("VINWMIVehicles: Google OAuth ClientId is not configured — Google login will fail");
+
 var pathBase = builder.Configuration["PathBase"];
 if (!string.IsNullOrWhiteSpace(pathBase))
     app.UsePathBase(pathBase);
