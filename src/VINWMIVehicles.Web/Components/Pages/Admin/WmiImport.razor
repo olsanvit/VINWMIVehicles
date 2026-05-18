@@ -1,0 +1,316 @@
+@page "/wmi-import"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+
+@using MercenariesAndBeasts.Infrastructure
+@using Microsoft.EntityFrameworkCore
+@using SharedServices.Models.VINWMIVehicles
+@using SharedServices.Models.VINWMIVehicles.Manufacturers
+@inject IDbContextFactory<AppDbContextVehicle> DbFactory
+
+<PageTitle>WMI Import (CSV) — VINWMIVehicles</PageTitle>
+
+<div class="d-flex align-items-center mb-3">
+    <h4 class="m-0"><i class="bi bi-cloud-upload me-2"></i>WMI Import (CSV)</h4>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header fw-bold">Formát CSV</div>
+    <div class="card-body">
+        <p class="mb-1">Vložte CSV text níže. Každý řádek = jeden WMI záznam. Záhlaví (header) je volitelné.</p>
+        <code class="d-block mb-2">WMI,ManufacturerName,YearFrom,YearTo,Notes</code>
+        <ul class="small text-muted mb-0">
+            <li><strong>WMI</strong> — 3 znaky (povinné)</li>
+            <li><strong>ManufacturerName</strong> — musí odpovídat existujícímu výrobci v DB (case-insensitive, povinné)</li>
+            <li><strong>YearFrom</strong> — rok (volitelné, může být prázdné)</li>
+            <li><strong>YearTo</strong> — rok (volitelné, může být prázdné)</li>
+            <li><strong>Notes</strong> — poznámka (volitelné)</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <label class="form-label fw-semibold">CSV text</label>
+        <textarea class="form-control font-monospace" rows="10"
+                  @bind="_csvText" placeholder="WMI,ManufacturerName,YearFrom,YearTo,Notes&#10;1HG,Honda,1981,,&#10;WBA,BMW,1975,,"></textarea>
+
+        <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-primary" @onclick="ParseAsync" disabled="@_busy">
+                <i class="bi bi-table me-1"></i> Analyzovat
+            </button>
+            <button class="btn btn-success" @onclick="ImportAsync"
+                    disabled="@(!_parsed || _busy || !_rows.Any(r => r.IsValid))">
+                <i class="bi bi-cloud-upload me-1"></i> Importovat platné záznamy (@ValidCount)
+            </button>
+            @if (_busy)
+            {
+                <div class="spinner-border spinner-border-sm align-self-center text-secondary" role="status"></div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (_importResult is not null)
+{
+    <div class="alert @(_importResult.Success ? "alert-success" : "alert-danger") d-flex align-items-center gap-2">
+        <i class="bi bi-@(_importResult.Success ? "check-circle" : "x-circle")"></i>
+        <span>@_importResult.Message</span>
+    </div>
+}
+
+@if (_errorMessage is not null)
+{
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>@_errorMessage
+    </div>
+}
+
+@if (_parsed && _rows.Any())
+{
+    <div class="card">
+        <div class="card-header fw-bold d-flex justify-content-between">
+            <span>Náhled (@_rows.Count řádků)</span>
+            <span>
+                <span class="badge bg-success me-1">@ValidCount platných</span>
+                <span class="badge bg-danger">@InvalidCount chybných</span>
+            </span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>#</th>
+                            <th>WMI</th>
+                            <th>Výrobce</th>
+                            <th>Od</th>
+                            <th>Do</th>
+                            <th>Poznámka</th>
+                            <th>Stav</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _rows)
+                        {
+                            <tr class="@(row.IsValid ? "" : "table-danger")">
+                                <td class="small text-muted">@row.LineNumber</td>
+                                <td><code class="small">@row.Wmi</code></td>
+                                <td class="small">@row.ManufacturerName</td>
+                                <td class="small">@row.YearFrom</td>
+                                <td class="small">@row.YearTo</td>
+                                <td class="small text-muted" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@row.Notes</td>
+                                <td>
+                                    @if (row.IsValid)
+                                    {
+                                        <span class="badge bg-success"><i class="bi bi-check"></i> OK</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger" title="@row.Error"><i class="bi bi-x"></i> @row.Error</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string _csvText = "";
+    private bool _parsed;
+    private bool _busy;
+    private string? _errorMessage;
+    private ImportResult? _importResult;
+    private List<CsvRow> _rows = new();
+
+    private int ValidCount => _rows.Count(r => r.IsValid);
+    private int InvalidCount => _rows.Count(r => !r.IsValid);
+
+    private async Task ParseAsync()
+    {
+        _busy = true;
+        _errorMessage = null;
+        _importResult = null;
+        _rows.Clear();
+        _parsed = false;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_csvText))
+            {
+                _errorMessage = "CSV text je prázdný.";
+                return;
+            }
+
+            // Load manufacturer names from DB (case-insensitive lookup)
+            await using var db = await DbFactory.CreateDbContextAsync();
+            var manufacturers = await db.VehManufacturers
+                .Select(m => new { m.Guid, m.Name })
+                .ToListAsync();
+            var manufacturerMap = manufacturers
+                .GroupBy(m => m.Name.ToUpperInvariant())
+                .ToDictionary(g => g.Key, g => g.First().Guid);
+
+            var lines = _csvText
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+            int lineNumber = 0;
+            foreach (var line in lines)
+            {
+                lineNumber++;
+                var trimmed = line.Trim();
+                if (string.IsNullOrWhiteSpace(trimmed)) continue;
+
+                // Skip header line (case-insensitive check for "WMI" in first column)
+                var parts = trimmed.Split(',');
+                if (parts.Length > 0 && parts[0].Trim().Equals("WMI", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var row = ParseLine(parts, lineNumber, manufacturerMap);
+                _rows.Add(row);
+            }
+
+            _parsed = true;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Chyba při analýze: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static CsvRow ParseLine(string[] parts, int lineNumber, Dictionary<string, Guid> manufacturerMap)
+    {
+        var row = new CsvRow { LineNumber = lineNumber };
+
+        row.Wmi = parts.Length > 0 ? parts[0].Trim() : "";
+        row.ManufacturerName = parts.Length > 1 ? parts[1].Trim() : "";
+        var yearFromStr = parts.Length > 2 ? parts[2].Trim() : "";
+        var yearToStr = parts.Length > 3 ? parts[3].Trim() : "";
+        row.Notes = parts.Length > 4 ? string.Join(",", parts[4..]).Trim() : null;
+
+        // Validate WMI
+        if (row.Wmi.Length != 3)
+        {
+            row.Error = $"WMI musí mít 3 znaky (má {row.Wmi.Length})";
+            return row;
+        }
+
+        // Validate manufacturer
+        if (string.IsNullOrWhiteSpace(row.ManufacturerName))
+        {
+            row.Error = "Chybí název výrobce";
+            return row;
+        }
+
+        if (!manufacturerMap.TryGetValue(row.ManufacturerName.ToUpperInvariant(), out var manufacturerId))
+        {
+            row.Error = $"Výrobce '{row.ManufacturerName}' nenalezen v DB";
+            return row;
+        }
+
+        row.ManufacturerId = manufacturerId;
+
+        // Parse years (optional)
+        if (!string.IsNullOrWhiteSpace(yearFromStr))
+        {
+            if (int.TryParse(yearFromStr, out var yf))
+                row.YearFrom = yf;
+            else
+            {
+                row.Error = $"Neplatný rok 'YearFrom': {yearFromStr}";
+                return row;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(yearToStr))
+        {
+            if (int.TryParse(yearToStr, out var yt))
+                row.YearTo = yt;
+            else
+            {
+                row.Error = $"Neplatný rok 'YearTo': {yearToStr}";
+                return row;
+            }
+        }
+
+        row.IsValid = true;
+        return row;
+    }
+
+    private async Task ImportAsync()
+    {
+        if (!_parsed) return;
+
+        _busy = true;
+        _errorMessage = null;
+        _importResult = null;
+
+        try
+        {
+            var validRows = _rows.Where(r => r.IsValid).ToList();
+            if (!validRows.Any())
+            {
+                _importResult = new ImportResult { Success = false, Message = "Žádné platné záznamy k importu." };
+                return;
+            }
+
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var newAssignments = validRows.Select(row => new WmiAssignment
+            {
+                Wmi = row.Wmi.ToUpperInvariant(),
+                ManufacturerId = row.ManufacturerId,
+                YearFrom = row.YearFrom,
+                YearTo = row.YearTo,
+                Notes = string.IsNullOrWhiteSpace(row.Notes) ? null : row.Notes,
+                Source = DataSource.Manual,
+                IsActive = true
+            }).ToList();
+
+            db.WmiAssignments.AddRange(newAssignments);
+            await db.SaveChangesAsync();
+
+            int skipped = _rows.Count(r => !r.IsValid);
+            _importResult = new ImportResult
+            {
+                Success = true,
+                Message = $"Importováno {newAssignments.Count} záznamů. Přeskočeno {skipped} chybných řádků."
+            };
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Chyba při importu: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private class CsvRow
+    {
+        public int LineNumber { get; set; }
+        public string Wmi { get; set; } = "";
+        public string ManufacturerName { get; set; } = "";
+        public Guid ManufacturerId { get; set; }
+        public int? YearFrom { get; set; }
+        public int? YearTo { get; set; }
+        public string? Notes { get; set; }
+        public bool IsValid { get; set; }
+        public string? Error { get; set; }
+    }
+
+    private class ImportResult
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = "";
+    }
+}
