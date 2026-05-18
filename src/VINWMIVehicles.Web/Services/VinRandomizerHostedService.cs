@@ -5,9 +5,10 @@ using SharedServices.Models.Common;
 namespace VINWMIVehicles.Services;
 
 /// <summary>
-/// Background service který denně spouští VinRandomizerService.
-/// Sleduje WebsiteTask záznamy s názvem VinRandomizerDaily / WmiRandomizerDaily.
-/// Pokud NextRunAtUtc je v minulosti → spustí randomizer a nastaví NextRunAtUtc na zítřek.
+/// A long-running <see cref="BackgroundService"/> that triggers <see cref="VinRandomizerService.RunDailyAsync"/> once per day.
+/// It polls every 15 minutes and runs the randomizer when the <c>VinRandomizerDaily</c> <see cref="WebsiteTask"/> record
+/// indicates that the next scheduled run time has passed.
+/// On first startup the task record is created and the randomizer is executed immediately.
 /// </summary>
 public class VinRandomizerHostedService : BackgroundService
 {
@@ -15,12 +16,22 @@ public class VinRandomizerHostedService : BackgroundService
     private readonly ILogger<VinRandomizerHostedService> _log;
     private static readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(15);
 
+    /// <summary>
+    /// Initializes a new instance of <see cref="VinRandomizerHostedService"/> with its required dependencies.
+    /// </summary>
+    /// <param name="scopes">The factory used to create DI scopes for each polling iteration.</param>
+    /// <param name="log">The logger used to record execution start, completion, and error events.</param>
     public VinRandomizerHostedService(IServiceScopeFactory scopes, ILogger<VinRandomizerHostedService> log)
     {
         _scopes = scopes;
         _log    = log;
     }
 
+    /// <summary>
+    /// Starts the background polling loop after a 30-second startup delay.
+    /// The loop checks whether the daily run is due every 15 minutes and stops when the cancellation token is signalled.
+    /// </summary>
+    /// <param name="ct">The cancellation token provided by the host to signal graceful shutdown.</param>
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         // Počkej na startup

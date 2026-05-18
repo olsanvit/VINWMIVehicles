@@ -5,6 +5,11 @@ using VINWMIVehicles.Models;
 
 namespace VINWMIVehicles.Services;
 
+/// <summary>
+/// Implements <see cref="IVehicleSearchService"/> by orchestrating concurrent NHTSA API and AI model calls,
+/// then persisting the results through <see cref="EfCoreService{TContext}"/>.
+/// Database save failures are caught and logged without propagating exceptions to callers.
+/// </summary>
 public class VehicleSearchService : IVehicleSearchService
 {
     private readonly INhtsaService _nhtsa;
@@ -13,6 +18,14 @@ public class VehicleSearchService : IVehicleSearchService
     private readonly EfCoreService<AppDbContextVehicle> _db;
     private readonly ILogger<VehicleSearchService> _log;
 
+    /// <summary>
+    /// Initializes a new instance of <see cref="VehicleSearchService"/> with its required dependencies.
+    /// </summary>
+    /// <param name="nhtsa">The NHTSA API client used for official VIN and WMI decoding.</param>
+    /// <param name="wmiGpt">The specialized GPT service for detailed WMI/WMC manufacturer analysis.</param>
+    /// <param name="gpt">The general-purpose GPT service used for VIN narrative analysis.</param>
+    /// <param name="db">The EF Core service used to persist and retrieve vehicle records.</param>
+    /// <param name="log">The logger used to record persistence errors.</param>
     public VehicleSearchService(
         INhtsaService nhtsa,
         ChatGPTWMI wmiGpt,
@@ -27,6 +40,17 @@ public class VehicleSearchService : IVehicleSearchService
         _log = log;
     }
 
+    /// <summary>
+    /// Fetches NHTSA WMI data and AI manufacturer analysis concurrently, then upserts the result
+    /// as a <see cref="WmiEntry"/> with its associated manufacturers in the database.
+    /// If the database save fails, the error is logged and the returned <c>Saved</c> value is <see langword="null"/>.
+    /// </summary>
+    /// <param name="code">The WMI or WMC code to search (3 or 6 characters, case-insensitive).</param>
+    /// <param name="codeType">Indicates whether <paramref name="code"/> represents a WMI or WMC assignment.</param>
+    /// <returns>
+    /// A tuple of the raw NHTSA response, a pretty-printed JSON string of the AI result,
+    /// and the persisted <see cref="WmiEntry"/> (or <see langword="null"/> on persistence failure).
+    /// </returns>
     public async Task<(NhtsaWmiResponse Nhtsa, string AiResponse, WmiEntry? Saved)> SearchWmiAsync(string code, WmiCodeType codeType)
     {
         var nhtsaTask = _nhtsa.DecodeWMIAsync(code);
@@ -75,6 +99,16 @@ public class VehicleSearchService : IVehicleSearchService
         return (nhtsa, aiText, saved);
     }
 
+    /// <summary>
+    /// Fetches NHTSA VIN decode data and an AI narrative analysis concurrently, then upserts the result
+    /// as a <see cref="VinInfo"/> record in the database.
+    /// If the database save fails, the error is logged and the returned <c>Saved</c> value is <see langword="null"/>.
+    /// </summary>
+    /// <param name="vin">The 17-character VIN to decode; leading/trailing whitespace is trimmed and the value is uppercased.</param>
+    /// <returns>
+    /// A tuple of the raw NHTSA response, the AI narrative text,
+    /// and the persisted <see cref="VinInfo"/> record (or <see langword="null"/> on persistence failure).
+    /// </returns>
     public async Task<(NhtsaVinResponse Nhtsa, string AiResponse, VinInfo? Saved)> SearchVinAsync(string vin)
     {
         var nhtsaTask = _nhtsa.DecodeVINAsync(vin);
@@ -112,6 +146,17 @@ public class VehicleSearchService : IVehicleSearchService
         return (nhtsa, aiText, saved);
     }
 
+    /// <summary>
+    /// Analyzes a non-standard or custom VIN using only the AI model (no NHTSA lookup),
+    /// then persists the result as a <see cref="VinInfo"/> record including any user-supplied notes.
+    /// If the database save fails, the error is logged and the returned <c>Saved</c> value is <see langword="null"/>.
+    /// </summary>
+    /// <param name="vin">The custom or non-standard VIN string to analyze; whitespace is trimmed.</param>
+    /// <param name="notes">Optional additional context or notes that are appended to the AI prompt.</param>
+    /// <returns>
+    /// A tuple of the AI analysis text and the persisted <see cref="VinInfo"/> record
+    /// (or <see langword="null"/> on persistence failure).
+    /// </returns>
     public async Task<(string AiResponse, VinInfo? Saved)> SearchCustomVinAsync(string vin, string? notes)
     {
         var userMsg = $"Custom VIN: {vin.Trim()}";

@@ -9,13 +9,10 @@ using System.Text;
 namespace VINWMIVehicles.Services;
 
 /// <summary>
-/// Denní randomizer VIN/WMI/WMC kódů.
-/// Počty vychází z čísla dne v měsíci (1–31).
-/// - VIN:            dayOfMonth kusů
-/// - WMI:            dayOfMonth kusů
-/// - WMI Extended:   dayOfMonth * 5 kusů
-/// - WMC:            dayOfMonth kusů
-/// Každý generovaný kód je dotázán přes ChatGptAsker a výsledek uložen do AI result tabulek.
+/// Generates and stores randomized VIN, WMI, and WMC lookups on a daily schedule.
+/// The number of items generated each run is proportional to the current day-of-month (1–31):
+/// VIN and WMI each produce <c>dayOfMonth</c> items, WMI Extended produces <c>dayOfMonth * 5</c>, and WMC produces <c>dayOfMonth</c>.
+/// Each generated code is submitted to the AI model and the response is persisted in the corresponding AI result table.
 /// </summary>
 public class VinRandomizerService
 {
@@ -26,6 +23,12 @@ public class VinRandomizerService
     private static readonly char[] VinChars =
         "ABCDEFGHJKLMNPRSTUVWXYZ0123456789".ToCharArray(); // bez I, O, Q
 
+    /// <summary>
+    /// Initializes a new instance of <see cref="VinRandomizerService"/> with its required dependencies.
+    /// </summary>
+    /// <param name="factory">The EF Core context factory used to create isolated database contexts per run.</param>
+    /// <param name="gpt">The AI service used to analyze generated VIN, WMI, and WMC codes.</param>
+    /// <param name="log">The logger used to record progress, warnings, and errors during each run.</param>
     public VinRandomizerService(
         IDbContextFactory<AppDbContextVehicle> factory,
         ChatGptAsker gpt,
@@ -40,6 +43,12 @@ public class VinRandomizerService
     // Hlavní metoda — volaná z WebsiteTask / scheduleru
     // ────────────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes the daily randomization run: generates VINs, queries WMI and WMC codes via the AI model,
+    /// and saves all results to the database in a single <see cref="DbContext"/> session.
+    /// The method exits early if no WMI codes are present in the database.
+    /// </summary>
+    /// <param name="ct">A cancellation token that can interrupt each iteration of the generation loops.</param>
     public async Task RunDailyAsync(CancellationToken ct = default)
     {
         var day = DateTime.UtcNow.Day; // 1–31
