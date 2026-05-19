@@ -11,6 +11,7 @@
 @inject UserManager<AppUser> UserManager
 @inject IDbContextFactory<AppDbContextVehicle> DbFactory
 @inject NavigationManager Nav
+@inject ToastService Toast
 
 <PageTitle>Admin — VINWMIVehicles</PageTitle>
 
@@ -294,7 +295,7 @@ else
             await using var db = await DbFactory.CreateDbContextAsync();
             _tasks = await db.WebsiteTasks.OrderBy(t => t.Name).ToListAsync();
         }
-        catch (Exception ex) { _taskError = ex.Message; }
+        catch (Exception ex) { _taskError = ex.Message; Toast.ShowError("Chyba", $"Nepodařilo se načíst tasky: {ex.Message}"); }
     }
 
     private async Task TriggerNowAsync(Guid id)
@@ -308,8 +309,9 @@ else
             task.NextRunAtUtc = DateTimeOffset.UtcNow.AddSeconds(-1); // spustit hned
             await db.SaveChangesAsync();
             await LoadTasksAsync();
+            Toast.ShowSuccess("Spuštěno", "Task byl úspěšně naplánován ke spuštění.");
         }
-        catch (Exception ex) { _taskError = ex.Message; }
+        catch (Exception ex) { _taskError = ex.Message; Toast.ShowError("Chyba", $"Nepodařilo se spustit task: {ex.Message}"); }
     }
 
     private async Task ToggleTaskAsync(Guid id)
@@ -323,7 +325,8 @@ else
             task.Enabled = !task.Enabled;
             await db.SaveChangesAsync();
             await LoadTasksAsync();
+            Toast.ShowSuccess("Uloženo", "Stav tasku byl úspěšně změněn.");
         }
-        catch (Exception ex) { _taskError = ex.Message; }
+        catch (Exception ex) { _taskError = ex.Message; Toast.ShowError("Chyba", $"Nepodařilo se změnit stav tasku: {ex.Message}"); }
     }
 }

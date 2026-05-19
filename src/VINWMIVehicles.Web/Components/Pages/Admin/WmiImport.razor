@@ -7,6 +7,7 @@
 @using SharedServices.Models.VINWMIVehicles
 @using SharedServices.Models.VINWMIVehicles.Manufacturers
 @inject IDbContextFactory<AppDbContextVehicle> DbFactory
+@inject ToastService Toast
 
 <PageTitle>WMI Import (CSV) — VINWMIVehicles</PageTitle>
 
@@ -179,6 +180,7 @@
         catch (Exception ex)
         {
             _errorMessage = $"Chyba při analýze: {ex.Message}";
+            Toast.ShowError("Chyba", $"Nepodařilo se analyzovat CSV: {ex.Message}");
         }
         finally
         {
@@ -284,10 +286,12 @@
                 Success = true,
                 Message = $"Importováno {newAssignments.Count} záznamů. Přeskočeno {skipped} chybných řádků."
             };
+            Toast.ShowSuccess("Importováno", $"Úspěšně importováno {newAssignments.Count} záznamů.");
         }
         catch (Exception ex)
         {
             _errorMessage = $"Chyba při importu: {ex.Message}";
+            Toast.ShowError("Chyba", $"Nepodařilo se importovat záznamy: {ex.Message}");
         }
         finally
         {
