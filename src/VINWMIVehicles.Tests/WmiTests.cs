@@ -80,7 +80,7 @@ public class WmiTests
     public void WmiAssignment_YearRange_YearFromLessOrEqualYearTo()
     {
         var assignment = new WmiAssignment { Wmi = "1HG", YearFrom = 1990, YearTo = 2005 };
-        assignment.YearFrom.Should().BeLessOrEqualTo(assignment.YearTo!.Value);
+        assignment.YearFrom!.Value.Should().BeLessThanOrEqualTo(assignment.YearTo!.Value);
     }
 
     // ── Manufacturer lookup by WMI prefix ─────────────────────────────────────
