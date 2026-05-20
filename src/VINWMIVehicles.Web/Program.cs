@@ -98,6 +98,7 @@ builder.Services.AddScoped<VinRandomizerService>();
 builder.Services.AddHostedService<VinRandomizerHostedService>();
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHealthChecks();
 
 AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
     Log.Fatal(e.ExceptionObject as Exception, "UNHANDLED AppDomain exception");
@@ -109,6 +110,7 @@ TaskScheduler.UnobservedTaskException += (sender, e) =>
 };
 
 var app = builder.Build();
+app.MapHealthChecks("/health");
 
 if (string.IsNullOrWhiteSpace(builder.Configuration["OpenAI:ApiKey"]))
     Log.Warning("VINWMIVehicles: OpenAI ApiKey is not configured — AI features will fail");
