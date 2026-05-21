@@ -35,10 +35,7 @@
 
     @if (IsLoading)
     {
-        <div class="text-center py-5">
-            <div class="spinner-border text-secondary"></div>
-            <p class="mt-2 text-muted">Načítám data...</p>
-        </div>
+        <PageLoadingSpinner />
     }
     else if (ErrorMessage != null)
     {
