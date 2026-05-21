@@ -292,3 +292,5 @@ file sealed class NoOpEmailSender : Microsoft.AspNetCore.Identity.UI.Services.IE
     public Task SendEmailAsync(string email, string subject, string htmlMessage)
         => Task.CompletedTask;
 }
+
+public partial class Program { }
