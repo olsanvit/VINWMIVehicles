@@ -14,6 +14,7 @@ using Services;
 using SharedServices;
 using SharedServices.Services;
 using System.Security.Claims;
+using VINWMIVehicles.Web.Achievements;
 using VINWMIVehicles.Components;
 using VINWMIVehicles.Services;
 
@@ -85,6 +86,13 @@ builder.Services.AddApexCharts();
 
 // Vehicle services
 builder.Services.AddScoped<ToastService>();
+builder.Services.AddScoped<AchievementService>(sp =>
+    new AchievementService(
+        sp.GetRequiredService<ToastService>(),
+        sp.GetRequiredService<IWebHostEnvironment>())
+    {
+        Definitions = VINWMIAchievements.All
+    });
 builder.Services.AddScoped<ErrorService<AppDbContextVehicle>>();
 builder.Services.AddScoped<EfCoreService<AppDbContextVehicle>>();
 builder.Services.AddScoped<ChatGPTWMI>();
