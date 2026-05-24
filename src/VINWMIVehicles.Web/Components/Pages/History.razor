@@ -12,13 +12,13 @@
     <h2 class="mb-1"><i class="bi bi-clock-history me-2 text-secondary"></i>Historie vyhledávání</h2>
     <p class="text-muted mb-4">Přehled uložených WMI/WMC kódů a VIN z databáze.</p>
 
-    <ul class="nav nav-tabs mb-4" id="historyTabs">
+    <ul class="nav nav-tabs mb-3" id="historyTabs">
         <li class="nav-item">
             <button class="nav-link @(ActiveTab == "wmi" ? "active" : "")" @onclick='() => SetTab("wmi")'>
                 <i class="bi bi-search me-1"></i> WMI / WMC
                 @if (WmiEntries != null)
                 {
-                    <span class="badge bg-secondary ms-1">@WmiEntries.Count</span>
+                    <span class="badge bg-secondary ms-1">@FilteredWmiEntries.Count</span>
                 }
             </button>
         </li>
@@ -27,11 +27,27 @@
                 <i class="bi bi-car-front me-1"></i> VIN
                 @if (VinInfos != null)
                 {
-                    <span class="badge bg-secondary ms-1">@VinInfos.Count</span>
+                    <span class="badge bg-secondary ms-1">@FilteredVinInfos.Count</span>
                 }
             </button>
         </li>
     </ul>
+
+    <div class="row g-2 mb-4">
+        <div class="col-md-4">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input class="form-control" placeholder="@(ActiveTab == "wmi" ? "Hledat kód, zemi, region, výrobce…" : "Hledat VIN, výrobce, model…")"
+                       @bind="_search" @bind:event="oninput" @oninput="OnSearchChanged" />
+                @if (!string.IsNullOrEmpty(_search))
+                {
+                    <button class="btn btn-outline-secondary" @onclick="ClearSearch">
+                        <i class="bi bi-x"></i>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
 
     @if (IsLoading)
     {
@@ -46,6 +62,10 @@
         @if (WmiEntries == null || !WmiEntries.Any())
         {
             <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Žádné WMI záznamy v databázi.</div>
+        }
+        else if (!FilteredWmiEntries.Any())
+        {
+            <div class="alert alert-warning"><i class="bi bi-search me-2"></i>Žádné výsledky pro „@_search".</div>
         }
         else
         {
@@ -62,7 +82,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var e in WmiEntries)
+                            @foreach (var e in FilteredWmiEntries)
                             {
                                 <tr>
                                     <td><code class="fw-bold">@e.Code</code></td>
@@ -93,6 +113,10 @@
         {
             <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Žádné VIN záznamy v databázi.</div>
         }
+        else if (!FilteredVinInfos.Any())
+        {
+            <div class="alert alert-warning"><i class="bi bi-search me-2"></i>Žádné výsledky pro „@_search".</div>
+        }
         else
         {
             <div class="card border-0 shadow-sm">
@@ -108,7 +132,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var v in VinInfos)
+                            @foreach (var v in FilteredVinInfos)
                             {
                                 <tr>
                                     <td><code class="small">@v.Vin</code></td>
@@ -134,6 +158,28 @@
     private string? ErrorMessage { get; set; }
     private List<WmiEntry>? WmiEntries { get; set; }
     private List<VinInfo>? VinInfos { get; set; }
+    private string _search = string.Empty;
+
+    private List<WmiEntry> FilteredWmiEntries =>
+        WmiEntries is null ? [] :
+        string.IsNullOrWhiteSpace(_search) ? WmiEntries :
+        WmiEntries.Where(e =>
+            (e.Code?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (e.CodeType?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (e.CountryISO?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (e.Region?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            e.Manufacturers.Any(m => m.Manufacturer?.OfficialName?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
+        ).ToList();
+
+    private List<VinInfo> FilteredVinInfos =>
+        VinInfos is null ? [] :
+        string.IsNullOrWhiteSpace(_search) ? VinInfos :
+        VinInfos.Where(v =>
+            (v.Vin?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (v.Make?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (v.Model?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (v.ModelYear?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
+        ).ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -143,7 +189,18 @@
     private async Task SetTab(string tab)
     {
         ActiveTab = tab;
+        _search = string.Empty;
         await LoadData();
+    }
+
+    private void OnSearchChanged(ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString() ?? string.Empty;
+    }
+
+    private void ClearSearch()
+    {
+        _search = string.Empty;
     }
 
     private async Task LoadData()
