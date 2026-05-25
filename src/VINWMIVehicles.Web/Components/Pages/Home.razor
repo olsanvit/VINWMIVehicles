@@ -1,90 +1,104 @@
 @page "/"
 @rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 
 <PageTitle>VINWMIVehicles — Dashboard</PageTitle>
 
-<div class="container-fluid">
-    <h1 class="mb-4"><i class="bi bi-car-front me-2"></i>VINWMIVehicles</h1>
-    <p class="text-muted mb-4">Vyhledávání informací o vozidlech pomocí NHTSA API a AI analýzy.</p>
+<!-- Page header -->
+<div class="ui-page-header ui-anim-fade-up">
+    <h3>
+        <i class="bi bi-car-front"></i>
+        Dashboard
+    </h3>
+    <span class="badge bg-secondary text-muted small">VINWMIVehicles</span>
+</div>
 
-    <div class="row g-4">
-        <div class="col-md-6 col-xl-3">
-            <a href="wmi-search" class="text-decoration-none">
-                <div class="card h-100 border-0 shadow-sm hover-card">
-                    <div class="card-body text-center p-4">
-                        <i class="bi bi-search display-4 text-primary mb-3 d-block"></i>
-                        <h5 class="card-title fw-bold">WMI Search</h5>
-                        <p class="card-text text-muted small">World Manufacturer Identifier (3 znaky) — identifikace výrobce vozidla</p>
-                        <span class="badge bg-primary">3 znaky</span>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <div class="col-md-6 col-xl-3">
-            <a href="wmc-search" class="text-decoration-none">
-                <div class="card h-100 border-0 shadow-sm hover-card">
-                    <div class="card-body text-center p-4">
-                        <i class="bi bi-upc-scan display-4 text-success mb-3 d-block"></i>
-                        <h5 class="card-title fw-bold">WMC Search</h5>
-                        <p class="card-text text-muted small">World Manufacturer Code (6 znaků) — rozšířený kód výrobce</p>
-                        <span class="badge bg-success">6 znaků</span>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <div class="col-md-6 col-xl-3">
-            <a href="vin-search" class="text-decoration-none">
-                <div class="card h-100 border-0 shadow-sm hover-card">
-                    <div class="card-body text-center p-4">
-                        <i class="bi bi-car-front display-4 text-warning mb-3 d-block"></i>
-                        <h5 class="card-title fw-bold">VIN Search</h5>
-                        <p class="card-text text-muted small">Vehicle Identification Number (17 znaků) — kompletní dekódování vozidla</p>
-                        <span class="badge bg-warning text-dark">17 znaků</span>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <div class="col-md-6 col-xl-3">
-            <a href="custom-vin" class="text-decoration-none">
-                <div class="card h-100 border-0 shadow-sm hover-card">
-                    <div class="card-body text-center p-4">
-                        <i class="bi bi-pencil-square display-4 text-danger mb-3 d-block"></i>
-                        <h5 class="card-title fw-bold">Custom VIN</h5>
-                        <p class="card-text text-muted small">Libovolný VIN nebo kód — AI analýza bez omezení délky</p>
-                        <span class="badge bg-danger">AI only</span>
-                    </div>
-                </div>
-            </a>
-        </div>
+<!-- Search tools grid -->
+<div class="row g-3 mb-4 ui-anim-fade-up">
+    <div class="col-6 col-lg-3">
+        <QuickLinkCard Href="/wmi-search"
+                       Icon="bi-search"
+                       Title="WMI Search"
+                       Description="World Manufacturer Identifier (3 znaky)"
+                       IconClass="icon-accent" />
     </div>
-
-    <div class="row mt-4">
-        <div class="col-12">
-            <a href="history" class="text-decoration-none">
-                <div class="card border-0 shadow-sm hover-card">
-                    <div class="card-body d-flex align-items-center p-4">
-                        <i class="bi bi-clock-history display-5 text-secondary me-4"></i>
-                        <div>
-                            <h5 class="card-title fw-bold mb-1">Historie vyhledávání</h5>
-                            <p class="card-text text-muted small mb-0">Přehled všech provedených vyhledávání WMI/WMC a VIN uložených v databázi</p>
-                        </div>
-                    </div>
-                </div>
-            </a>
-        </div>
+    <div class="col-6 col-lg-3">
+        <QuickLinkCard Href="/wmc-search"
+                       Icon="bi-upc-scan"
+                       Title="WMC Search"
+                       Description="World Manufacturer Code (6 znaků)"
+                       IconClass="icon-emerald" />
+    </div>
+    <div class="col-6 col-lg-3">
+        <QuickLinkCard Href="/vin-search"
+                       Icon="bi-car-front"
+                       Title="VIN Search"
+                       Description="Vehicle Identification Number (17 znaků)"
+                       IconClass="icon-amber" />
+    </div>
+    <div class="col-6 col-lg-3">
+        <QuickLinkCard Href="/custom-vin"
+                       Icon="bi-pencil-square"
+                       Title="Custom VIN"
+                       Description="Libovolný kód — AI analýza"
+                       IconClass="icon-rose" />
     </div>
 </div>
 
-<style>
-    .hover-card {
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
-        cursor: pointer;
-    }
-    .hover-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.15) !important;
-    }
-</style>
+<!-- Info panels row -->
+<div class="row g-3 ui-anim-fade-up">
+    <div class="col-lg-8">
+        <div class="ui-panel">
+            <div class="ui-panel-header">
+                <span class="ui-panel-title">
+                    <i class="bi bi-info-circle text-accent"></i>
+                    Průvodce kódy vozidel
+                </span>
+            </div>
+            <div class="row g-3 py-2">
+                <div class="col-md-4">
+                    <div class="d-flex gap-2 align-items-start">
+                        <span class="badge bg-primary mt-1">WMI</span>
+                        <div>
+                            <div class="fw-semibold small">World Manufacturer Identifier</div>
+                            <div class="text-muted" style="font-size:12px">První 3 znaky VIN — identifikuje výrobce vozidla po celém světě.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex gap-2 align-items-start">
+                        <span class="badge bg-success mt-1">WMC</span>
+                        <div>
+                            <div class="fw-semibold small">World Manufacturer Code</div>
+                            <div class="text-muted" style="font-size:12px">Rozšířený kód (6 znaků) pro přesnější identifikaci výrobce.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex gap-2 align-items-start">
+                        <span class="badge bg-warning text-dark mt-1">VIN</span>
+                        <div>
+                            <div class="fw-semibold small">Vehicle Identification Number</div>
+                            <div class="text-muted" style="font-size:12px">Kompletní 17místný identifikátor vozidla s AI analýzou.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="d-flex flex-column gap-3">
+            <QuickLinkCard Href="/history"
+                           Icon="bi-clock-history"
+                           Title="Historie vyhledávání"
+                           Description="Přehled všech WMI/WMC a VIN vyhledávání"
+                           IconClass="icon-cyan" />
+            <QuickLinkCard Href="/achievements"
+                           Icon="bi-trophy-fill"
+                           Title="Achievementy"
+                           Description="Odemčené odznaky a body"
+                           IconClass="icon-purple" />
+        </div>
+    </div>
+</div>
