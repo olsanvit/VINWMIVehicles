@@ -3,66 +3,86 @@
 @attribute [Authorize]
 @inject IVehicleSearchService SearchService
 
-<PageTitle>Custom VIN</PageTitle>
+<PageTitle>Custom VIN — VINWMIVehicles</PageTitle>
 
-<div class="container-fluid">
-    <h2 class="mb-1"><i class="bi bi-pencil-square me-2 text-danger"></i>Custom VIN</h2>
-    <p class="text-muted mb-4">Libovolný VIN nebo kód — AI analýza bez omezení délky</p>
+<div class="ui-page-header ui-anim-fade-up">
+    <h3><i class="bi bi-pencil-square"></i> Custom VIN</h3>
+    <span class="text-muted small">AI analýza libovolného VIN nebo kódu</span>
+</div>
 
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-12">
-                    <label class="form-label fw-semibold">Custom VIN / kód</label>
-                    <input class="form-control form-control-lg font-monospace"
-                           @bind="Vin"
-                           @bind:event="oninput"
-                           placeholder="Zadejte libovolný VIN nebo kód vozidla" />
-                </div>
-                <div class="col-12">
-                    <label class="form-label fw-semibold">Poznámky (volitelné)</label>
-                    <textarea class="form-control"
-                              @bind="Notes"
-                              rows="3"
-                              placeholder="Doplňující informace, kontext, otázky..."></textarea>
-                </div>
-                <div class="col-md-4">
-                    <button class="btn btn-danger btn-lg w-100" @onclick="Search" disabled="@(IsLoading || string.IsNullOrWhiteSpace(Vin))">
-                        @if (IsLoading)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2"></span>
-                        }
-                        <i class="bi bi-robot me-1"></i> AI Analýza
-                    </button>
-                </div>
+<!-- Input form -->
+<div class="ui-panel ui-anim-fade-up">
+    <div class="ui-panel-header">
+        <span class="ui-panel-title">
+            <i class="bi bi-robot text-accent"></i>
+            AI analýza
+        </span>
+    </div>
+    <div class="p-3">
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label small text-muted">Custom VIN / kód vozidla</label>
+                <input class="form-control"
+                       style="font-family:monospace;font-size:1.05rem;background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.15);color:var(--ui-text-1)"
+                       @bind="Vin"
+                       @bind:event="oninput"
+                       placeholder="Zadejte libovolný VIN nebo kód vozidla" />
+            </div>
+            <div class="col-12">
+                <label class="form-label small text-muted">Poznámky (volitelné)</label>
+                <textarea class="form-control"
+                          style="background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.15);color:var(--ui-text-1)"
+                          @bind="Notes"
+                          rows="3"
+                          placeholder="Doplňující informace, kontext, otázky…"></textarea>
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-primary w-100" @onclick="Search" disabled="@(IsLoading || string.IsNullOrWhiteSpace(Vin))">
+                    @if (IsLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    <i class="bi bi-robot me-1"></i> AI Analýza
+                </button>
             </div>
         </div>
     </div>
+</div>
 
-    @if (ErrorMessage != null)
-    {
-        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>@ErrorMessage</div>
-    }
+@if (ErrorMessage != null)
+{
+    <div class="ui-panel ui-anim-fade-up p-3">
+        <div class="d-flex align-items-center gap-2 text-danger">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span>@ErrorMessage</span>
+        </div>
+    </div>
+}
 
-    @if (AiResponse != null)
+@if (AiResponse != null)
+{
+    <div class="ui-panel ui-anim-fade-up">
+        <div class="ui-panel-header">
+            <span class="ui-panel-title">
+                <i class="bi bi-robot text-accent"></i>
+                AI Analýza — <code class="small">@LastVin</code>
+            </span>
+        </div>
+        <div class="p-3">
+            <p class="small mb-0" style="white-space:pre-wrap;color:var(--ui-text-1)">@AiResponse</p>
+        </div>
+    </div>
+
+    @if (SavedVin != null)
     {
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-danger text-white">
-                <i class="bi bi-robot me-2"></i>AI Analýza pro: <strong>@LastVin</strong>
-            </div>
-            <div class="card-body">
-                <p style="white-space: pre-wrap;">@AiResponse</p>
+        <div class="ui-panel ui-anim-fade-up p-3 mt-2">
+            <div class="d-flex align-items-center gap-2 text-success">
+                <i class="bi bi-check-circle-fill"></i>
+                <span>Uloženo do databáze (VIN: <strong>@SavedVin.Vin</strong>)</span>
             </div>
         </div>
-
-        @if (SavedVin != null)
-        {
-            <div class="alert alert-success mt-3">
-                <i class="bi bi-check-circle me-2"></i>Uloženo do databáze (VIN: <strong>@SavedVin.Vin</strong>)
-            </div>
-        }
     }
-</div>
+}
 
 @code {
     private string Vin { get; set; } = "";

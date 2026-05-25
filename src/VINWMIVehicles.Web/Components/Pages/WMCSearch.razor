@@ -3,100 +3,127 @@
 @attribute [Authorize]
 @inject IVehicleSearchService SearchService
 
-<PageTitle>WMC Search</PageTitle>
+<PageTitle>WMC Search — VINWMIVehicles</PageTitle>
 
-<div class="container-fluid">
-    <h2 class="mb-1"><i class="bi bi-upc-scan me-2 text-success"></i>WMC Search</h2>
-    <p class="text-muted mb-4">World Manufacturer Code — 6 znaků</p>
+<div class="ui-page-header ui-anim-fade-up">
+    <h3><i class="bi bi-upc-scan"></i> WMC Search</h3>
+    <span class="text-muted small">World Manufacturer Code — 6 znaků</span>
+</div>
 
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">WMC kód (6 znaků)</label>
-                    <input class="form-control form-control-lg"
-                           @bind="WmcCode"
-                           @bind:event="oninput"
-                           @onkeydown="OnKeyDown"
-                           placeholder="např. SA9019, VF1A06"
-                           maxlength="6" />
+<!-- Search input -->
+<div class="ui-panel ui-anim-fade-up">
+    <div class="ui-panel-header">
+        <span class="ui-panel-title">
+            <i class="bi bi-upc-scan text-accent"></i>
+            Vyhledat WMC kód
+        </span>
+    </div>
+    <div class="p-3">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label small text-muted">WMC kód (6 znaků)</label>
+                <input class="form-control"
+                       style="font-family:monospace;font-size:1.1rem;background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.15);color:var(--ui-text-1)"
+                       @bind="WmcCode"
+                       @bind:event="oninput"
+                       @onkeydown="OnKeyDown"
+                       placeholder="např. SA9019, VF1A06"
+                       maxlength="6" />
+                <div class="mt-1">
+                    <small class="text-muted">Zadáno: <strong>@WmcCode.Length</strong>/6 znaků</small>
                 </div>
-                <div class="col-md-3">
-                    <button class="btn btn-success btn-lg w-100" @onclick="Search" disabled="@(IsLoading || WmcCode.Length != 6)">
-                        @if (IsLoading)
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary w-100" @onclick="Search" disabled="@(IsLoading || WmcCode.Length != 6)">
+                    @if (IsLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    <i class="bi bi-upc-scan me-1"></i> Hledat
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (ErrorMessage != null)
+{
+    <div class="ui-panel ui-anim-fade-up p-3">
+        <div class="d-flex align-items-center gap-2 text-danger">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span>@ErrorMessage</span>
+        </div>
+    </div>
+}
+
+@if (NhtsaResult != null)
+{
+    <div class="row g-3 ui-anim-fade-up">
+        <div class="col-lg-6">
+            <div class="ui-panel h-100">
+                <div class="ui-panel-header">
+                    <span class="ui-panel-title">
+                        <i class="bi bi-database text-accent"></i>
+                        NHTSA výsledky
+                    </span>
+                </div>
+                <div class="p-3">
+                    @if (!NhtsaResult.Results.Any())
+                    {
+                        <p class="text-muted mb-0">Žádné výsledky z NHTSA.</p>
+                    }
+                    else
+                    {
+                        @foreach (var r in NhtsaResult.Results)
                         {
-                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <div class="mb-3 pb-3 border-bottom border-opacity-10">
+                                <div class="fw-semibold">@r.ManufacturerName</div>
+                                <div class="mt-1 d-flex gap-2 flex-wrap">
+                                    @if (!string.IsNullOrWhiteSpace(r.Country))
+                                    {
+                                        <span class="badge bg-secondary"><i class="bi bi-geo-alt me-1"></i>@r.Country</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(r.VehicleTypeName))
+                                    {
+                                        <span class="badge bg-secondary">@r.VehicleTypeName</span>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(r.CommonName))
+                                {
+                                    <p class="small text-muted mt-1 mb-0">@r.CommonName</p>
+                                }
+                            </div>
                         }
-                        <i class="bi bi-upc-scan me-1"></i> Hledat
-                    </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="ui-panel h-100">
+                <div class="ui-panel-header">
+                    <span class="ui-panel-title">
+                        <i class="bi bi-robot text-accent"></i>
+                        AI Analýza
+                    </span>
+                </div>
+                <div class="p-3">
+                    <pre class="small mb-0" style="white-space:pre-wrap;word-break:break-word;color:var(--ui-text-1)">@AiResponse</pre>
                 </div>
             </div>
         </div>
     </div>
 
-    @if (ErrorMessage != null)
+    @if (SavedEntry != null)
     {
-        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>@ErrorMessage</div>
-    }
-
-    @if (NhtsaResult != null)
-    {
-        <div class="row g-4">
-            <div class="col-lg-6">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-header bg-success text-white">
-                        <i class="bi bi-database me-2"></i>NHTSA výsledky
-                    </div>
-                    <div class="card-body">
-                        @if (!NhtsaResult.Results.Any())
-                        {
-                            <p class="text-muted">Žádné výsledky z NHTSA.</p>
-                        }
-                        else
-                        {
-                            @foreach (var r in NhtsaResult.Results)
-                            {
-                                <div class="mb-3 pb-3 border-bottom">
-                                    <h6 class="fw-bold">@r.ManufacturerName</h6>
-                                    @if (!string.IsNullOrWhiteSpace(r.Country))
-                                    {
-                                        <span class="badge bg-secondary me-1"><i class="bi bi-geo-alt me-1"></i>@r.Country</span>
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(r.VehicleTypeName))
-                                    {
-                                        <span class="badge bg-info text-dark">@r.VehicleTypeName</span>
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(r.CommonName))
-                                    {
-                                        <p class="small text-muted mt-1 mb-0">@r.CommonName</p>
-                                    }
-                                </div>
-                            }
-                        }
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-lg-6">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-header bg-success text-white">
-                        <i class="bi bi-robot me-2"></i>AI Analýza
-                    </div>
-                    <div class="card-body">
-                        <pre class="small" style="white-space: pre-wrap; word-break: break-word;">@AiResponse</pre>
-                    </div>
-                </div>
+        <div class="ui-panel ui-anim-fade-up p-3 mt-2">
+            <div class="d-flex align-items-center gap-2 text-success">
+                <i class="bi bi-check-circle-fill"></i>
+                <span>Uloženo do databáze (kód: <strong>@SavedEntry.Code</strong>)</span>
             </div>
         </div>
-
-        @if (SavedEntry != null)
-        {
-            <div class="alert alert-success mt-3">
-                <i class="bi bi-check-circle me-2"></i>Uloženo do databáze (kód: <strong>@SavedEntry.Code</strong>)
-            </div>
-        }
     }
-</div>
+}
 
 @code {
     private string WmcCode { get; set; } = "";

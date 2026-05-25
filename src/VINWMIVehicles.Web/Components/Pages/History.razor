@@ -6,151 +6,157 @@
 @using SharedServices.Services
 @using SharedServices.Models.Car
 
-<PageTitle>Historie</PageTitle>
+<PageTitle>Historie — VINWMIVehicles</PageTitle>
 
-<div class="container-fluid">
-    <h2 class="mb-1"><i class="bi bi-clock-history me-2 text-secondary"></i>Historie vyhledávání</h2>
-    <p class="text-muted mb-4">Přehled uložených WMI/WMC kódů a VIN z databáze.</p>
+<div class="ui-page-header ui-anim-fade-up">
+    <h3><i class="bi bi-clock-history"></i> Historie vyhledávání</h3>
+</div>
 
-    <ul class="nav nav-tabs mb-3" id="historyTabs">
-        <li class="nav-item">
-            <button class="nav-link @(ActiveTab == "wmi" ? "active" : "")" @onclick='() => SetTab("wmi")'>
-                <i class="bi bi-search me-1"></i> WMI / WMC
-                @if (WmiEntries != null)
-                {
-                    <span class="badge bg-secondary ms-1">@FilteredWmiEntries.Count</span>
-                }
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link @(ActiveTab == "vin" ? "active" : "")" @onclick='() => SetTab("vin")'>
-                <i class="bi bi-car-front me-1"></i> VIN
-                @if (VinInfos != null)
-                {
-                    <span class="badge bg-secondary ms-1">@FilteredVinInfos.Count</span>
-                }
-            </button>
-        </li>
-    </ul>
+<!-- Tab switcher -->
+<div class="d-flex gap-2 mb-3 ui-anim-fade-up">
+    <button class="btn btn-sm @(ActiveTab == "wmi" ? "btn-primary" : "btn-outline-secondary")"
+            @onclick='() => SetTab("wmi")'>
+        <i class="bi bi-search me-1"></i>WMI / WMC
+        @if (WmiEntries != null)
+        {
+            <span class="badge bg-secondary ms-1">@FilteredWmiEntries.Count</span>
+        }
+    </button>
+    <button class="btn btn-sm @(ActiveTab == "vin" ? "btn-primary" : "btn-outline-secondary")"
+            @onclick='() => SetTab("vin")'>
+        <i class="bi bi-car-front me-1"></i>VIN
+        @if (VinInfos != null)
+        {
+            <span class="badge bg-secondary ms-1">@FilteredVinInfos.Count</span>
+        }
+    </button>
+</div>
 
-    <div class="row g-2 mb-4">
-        <div class="col-md-4">
-            <div class="input-group input-group-sm">
-                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <input class="form-control" placeholder="@(ActiveTab == "wmi" ? "Hledat kód, zemi, region, výrobce…" : "Hledat VIN, výrobce, model…")"
-                       @bind="_search" @bind:event="oninput" />
-                @if (!string.IsNullOrEmpty(_search))
-                {
-                    <button class="btn btn-outline-secondary" @onclick="ClearSearch">
-                        <i class="bi bi-x"></i>
-                    </button>
-                }
-            </div>
+<UiSearchBar @bind-Value="_search"
+             Placeholder="@(ActiveTab == "wmi" ? "Hledat kód, zemi, region, výrobce…" : "Hledat VIN, výrobce, model…")"
+             OnSearch="() => { }" />
+
+@if (IsLoading)
+{
+    <div class="ui-anim-fade-up d-flex align-items-center gap-2 mt-3">
+        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+        <span class="text-muted">Načítám historii…</span>
+    </div>
+}
+else if (ErrorMessage != null)
+{
+    <div class="ui-panel ui-anim-fade-up p-3">
+        <div class="d-flex align-items-center gap-2 text-danger">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span>@ErrorMessage</span>
         </div>
     </div>
-
-    @if (IsLoading)
-    {
-        <PageLoadingSpinner />
-    }
-    else if (ErrorMessage != null)
-    {
-        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>@ErrorMessage</div>
-    }
-    else if (ActiveTab == "wmi")
-    {
-        @if (WmiEntries == null || !WmiEntries.Any())
-        {
-            <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Žádné WMI záznamy v databázi.</div>
-        }
-        else if (!FilteredWmiEntries.Any())
-        {
-            <div class="alert alert-warning"><i class="bi bi-search me-2"></i>Žádné výsledky pro „@_search".</div>
-        }
-        else
-        {
-            <div class="card border-0 shadow-sm">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
+}
+else if (ActiveTab == "wmi")
+{
+    <div class="ui-panel ui-anim-fade-up">
+        <div class="ui-panel-header">
+            <span class="ui-panel-title">
+                <i class="bi bi-search text-accent"></i>
+                WMI / WMC záznamy
+            </span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Kód</th>
+                        <th>Typ</th>
+                        <th>Země</th>
+                        <th>Region</th>
+                        <th>Výrobci</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (WmiEntries == null || !WmiEntries.Any())
+                    {
+                        <tr><td colspan="5" class="text-muted text-center py-4">Žádné WMI záznamy v databázi.</td></tr>
+                    }
+                    else if (!FilteredWmiEntries.Any())
+                    {
+                        <tr><td colspan="5" class="text-muted text-center py-4">Žádné výsledky pro „@_search".</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var e in FilteredWmiEntries)
+                        {
                             <tr>
-                                <th>Kód</th>
-                                <th>Typ</th>
-                                <th>Země</th>
-                                <th>Region</th>
-                                <th>Výrobci</th>
+                                <td><code class="fw-bold">@e.Code</code></td>
+                                <td><span class="badge bg-secondary">@e.CodeType</span></td>
+                                <td class="text-muted small">@(e.CountryISO ?? "—")</td>
+                                <td class="text-muted small">@(e.Region ?? "—")</td>
+                                <td>
+                                    @foreach (var m in e.Manufacturers.Take(3))
+                                    {
+                                        <span class="badge bg-secondary me-1">@m.Manufacturer?.OfficialName</span>
+                                    }
+                                    @if (e.Manufacturers.Count > 3)
+                                    {
+                                        <span class="badge bg-secondary">+@(e.Manufacturers.Count - 3)</span>
+                                    }
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var e in FilteredWmiEntries)
-                            {
-                                <tr>
-                                    <td><code class="fw-bold">@e.Code</code></td>
-                                    <td><span class="badge bg-primary">@e.CodeType</span></td>
-                                    <td>@(e.CountryISO ?? "—")</td>
-                                    <td>@(e.Region ?? "—")</td>
-                                    <td>
-                                        @foreach (var m in e.Manufacturers.Take(3))
-                                        {
-                                            <span class="badge bg-light text-dark me-1 border">@m.Manufacturer?.OfficialName</span>
-                                        }
-                                        @if (e.Manufacturers.Count > 3)
-                                        {
-                                            <span class="badge bg-secondary">+@(e.Manufacturers.Count - 3)</span>
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        }
-    }
-    else
-    {
-        @if (VinInfos == null || !VinInfos.Any())
-        {
-            <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Žádné VIN záznamy v databázi.</div>
-        }
-        else if (!FilteredVinInfos.Any())
-        {
-            <div class="alert alert-warning"><i class="bi bi-search me-2"></i>Žádné výsledky pro „@_search".</div>
-        }
-        else
-        {
-            <div class="card border-0 shadow-sm">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <div class="ui-panel ui-anim-fade-up">
+        <div class="ui-panel-header">
+            <span class="ui-panel-title">
+                <i class="bi bi-car-front text-accent"></i>
+                VIN záznamy
+            </span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>VIN</th>
+                        <th>Make</th>
+                        <th>Model</th>
+                        <th>Rok</th>
+                        <th>Poznámka</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (VinInfos == null || !VinInfos.Any())
+                    {
+                        <tr><td colspan="5" class="text-muted text-center py-4">Žádné VIN záznamy v databázi.</td></tr>
+                    }
+                    else if (!FilteredVinInfos.Any())
+                    {
+                        <tr><td colspan="5" class="text-muted text-center py-4">Žádné výsledky pro „@_search".</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var v in FilteredVinInfos)
+                        {
                             <tr>
-                                <th>VIN</th>
-                                <th>Make</th>
-                                <th>Model</th>
-                                <th>Rok</th>
-                                <th>Poznámka</th>
+                                <td><code class="small">@v.Vin</code></td>
+                                <td>@(v.Make ?? "—")</td>
+                                <td class="fw-semibold">@(v.Model ?? "—")</td>
+                                <td class="text-muted small">@(v.ModelYear ?? "—")</td>
+                                <td class="text-muted small" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                                    @(v.Note?.Length > 80 ? v.Note[..80] + "…" : v.Note ?? "—")
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var v in FilteredVinInfos)
-                            {
-                                <tr>
-                                    <td><code class="small">@v.Vin</code></td>
-                                    <td>@(v.Make ?? "—")</td>
-                                    <td>@(v.Model ?? "—")</td>
-                                    <td>@(v.ModelYear ?? "—")</td>
-                                    <td class="text-muted small" style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                                        @(v.Note?.Length > 80 ? v.Note[..80] + "…" : v.Note ?? "—")
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        }
-    }
-</div>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
 
 @code {
     private string ActiveTab { get; set; } = "wmi";
@@ -181,26 +187,13 @@
             (v.ModelYear?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
         ).ToList();
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadData();
-    }
+    protected override async Task OnInitializedAsync() => await LoadData();
 
     private async Task SetTab(string tab)
     {
         ActiveTab = tab;
         _search = string.Empty;
         await LoadData();
-    }
-
-    private void OnSearchChanged(ChangeEventArgs e)
-    {
-        _search = e.Value?.ToString() ?? string.Empty;
-    }
-
-    private void ClearSearch()
-    {
-        _search = string.Empty;
     }
 
     private async Task LoadData()
