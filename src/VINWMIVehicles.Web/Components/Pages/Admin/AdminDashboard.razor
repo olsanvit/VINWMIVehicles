@@ -15,8 +15,8 @@
 
 <PageTitle>Admin — VINWMIVehicles</PageTitle>
 
-<div class="dash-switcher mb-3">
-    <h4 class="m-0">Admin — VINWMIVehicles</h4>
+<div class="ui-page-header ui-anim-fade-up">
+    <h4 class="m-0"><i class="bi bi-shield-lock me-2 text-accent"></i>Admin — VINWMIVehicles</h4>
 </div>
 
 @if (_loading)
@@ -26,53 +26,41 @@
 else
 {
     <!-- Statistiky -->
-    <div class="row g-3 mb-3">
+    <div class="row g-3 mb-3 ui-anim-fade-up">
         <div class="col-6 col-md-2">
-            <div class="card text-center">
-                <div class="card-body py-2">
-                    <div class="fs-4 fw-bold text-primary">@_userCount</div>
-                    <div class="text-muted small">Uživatelé</div>
-                </div>
+            <div class="ui-panel text-center p-3">
+                <div class="fs-3 fw-bold text-accent">@_userCount</div>
+                <div class="text-muted small">Uživatelé</div>
             </div>
         </div>
         <div class="col-6 col-md-2">
-            <div class="card text-center">
-                <div class="card-body py-2">
-                    <div class="fs-4 fw-bold text-info">@_vinCount</div>
-                    <div class="text-muted small">VIN záznamy</div>
-                </div>
+            <div class="ui-panel text-center p-3">
+                <div class="fs-3 fw-bold text-accent">@_vinCount</div>
+                <div class="text-muted small">VIN záznamy</div>
             </div>
         </div>
         <div class="col-6 col-md-2">
-            <div class="card text-center">
-                <div class="card-body py-2">
-                    <div class="fs-4 fw-bold text-success">@_wmiCount</div>
-                    <div class="text-muted small">WMI přiřazení</div>
-                </div>
+            <div class="ui-panel text-center p-3">
+                <div class="fs-3 fw-bold text-accent">@_wmiCount</div>
+                <div class="text-muted small">WMI přiřazení</div>
             </div>
         </div>
         <div class="col-6 col-md-2">
-            <div class="card text-center">
-                <div class="card-body py-2">
-                    <div class="fs-4 fw-bold text-warning">@_aiVinCount</div>
-                    <div class="text-muted small">AI VIN výsledky</div>
-                </div>
+            <div class="ui-panel text-center p-3">
+                <div class="fs-3 fw-bold text-accent">@_aiVinCount</div>
+                <div class="text-muted small">AI VIN výsledky</div>
             </div>
         </div>
         <div class="col-6 col-md-2">
-            <div class="card text-center">
-                <div class="card-body py-2">
-                    <div class="fs-4 fw-bold text-danger">@_manufacturerCount</div>
-                    <div class="text-muted small">Výrobci (WMI)</div>
-                </div>
+            <div class="ui-panel text-center p-3">
+                <div class="fs-3 fw-bold text-accent">@_manufacturerCount</div>
+                <div class="text-muted small">Výrobci (WMI)</div>
             </div>
         </div>
         <div class="col-6 col-md-2">
-            <div class="card text-center">
-                <div class="card-body py-2">
-                    <div class="fs-4 fw-bold text-secondary">@_brandCount</div>
-                    <div class="text-muted small">Značky (Car)</div>
-                </div>
+            <div class="ui-panel text-center p-3">
+                <div class="fs-3 fw-bold text-accent">@_brandCount</div>
+                <div class="text-muted small">Značky (Car)</div>
             </div>
         </div>
     </div>
@@ -80,11 +68,15 @@ else
     <div class="row g-3">
         <!-- Uživatelé -->
         <div class="col-md-4">
-            <div class="card h-100">
-                <div class="card-header fw-bold">Uživatelé (@_userCount)</div>
-                <div class="card-body p-0">
-                    <table class="table table-sm table-hover mb-0">
-                        <thead class="table-secondary">
+            <div class="ui-panel h-100 ui-anim-fade-up">
+                <div class="ui-panel-header">
+                    <span class="ui-panel-title">
+                        <i class="bi bi-people text-accent"></i>Uživatelé (@_userCount)
+                    </span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead>
                             <tr><th>Email</th><th>Role</th></tr>
                         </thead>
                         <tbody>
@@ -108,146 +100,146 @@ else
 
         <!-- Poslední VIN dotazy -->
         <div class="col-md-8">
-            <div class="card h-100">
-                <div class="card-header fw-bold">Posledních 20 VIN dotazů</div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0">
-                            <thead class="table-secondary">
-                                <tr>
-                                    <th>VIN</th>
-                                    <th>WMI</th>
-                                    <th>Rok</th>
-                                    <th>Platný</th>
-                                    <th>Datum</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var v in _recentVins)
-                                {
-                                    <tr>
-                                        <td><code class="small">@v.Vin</code></td>
-                                        <td><code class="small">@v.Wmi</code></td>
-                                        <td class="small">@v.ModelYear</td>
-                                        <td>
-                                            @if (v.IsValid)
-                                            { <span class="badge bg-success">✓</span> }
-                                            else
-                                            { <span class="badge bg-danger">✗</span> }
-                                        </td>
-                                        <td class="small text-muted">@v.CreatedAt.ToString("dd.MM.yy HH:mm")</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+            <div class="ui-panel h-100 ui-anim-fade-up">
+                <div class="ui-panel-header">
+                    <span class="ui-panel-title">
+                        <i class="bi bi-search text-accent"></i>Posledních 20 VIN dotazů
+                    </span>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- VinRandomizer tasky -->
-    <div class="row g-3 mt-0">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header fw-bold d-flex align-items-center justify-content-between">
-                    <span><i class="bi bi-robot me-2"></i>Scheduled Tasks (VinRandomizer)</span>
-                    <button class="btn btn-sm btn-outline-secondary" @onclick="LoadTasksAsync">
-                        <i class="bi bi-arrow-clockwise"></i>
-                    </button>
-                </div>
-                <div class="card-body p-0">
-                    @if (!_tasks.Any())
-                    {
-                        <p class="text-muted small p-3 mb-0">Žádné tasky — spustí se po prvním cyklu randomizeru.</p>
-                    }
-                    else
-                    {
-                        <table class="table table-sm table-hover mb-0">
-                            <thead class="table-secondary">
-                                <tr>
-                                    <th>Název</th>
-                                    <th>Povoleno</th>
-                                    <th>Naposledy</th>
-                                    <th>Trvání</th>
-                                    <th>Příště</th>
-                                    <th>Chyba</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var t in _tasks)
-                                {
-                                    <tr>
-                                        <td class="small fw-semibold">@t.Name</td>
-                                        <td>
-                                            @if (t.Enabled)
-                                            { <span class="badge bg-success">Ano</span> }
-                                            else
-                                            { <span class="badge bg-secondary">Ne</span> }
-                                        </td>
-                                        <td class="small text-muted">
-                                            @(t.LastRunAtUtc.HasValue ? t.LastRunAtUtc.Value.LocalDateTime.ToString("dd.MM.yy HH:mm") : "—")
-                                        </td>
-                                        <td class="small text-muted">
-                                            @(t.LastRunDurationMs > 0 ? $"{t.LastRunDurationMs / 1000}s" : "—")
-                                        </td>
-                                        <td class="small @(t.NextRunAtUtc <= DateTimeOffset.UtcNow ? "text-danger" : "text-muted")">
-                                            @t.NextRunAtUtc.LocalDateTime.ToString("dd.MM.yy HH:mm")
-                                        </td>
-                                        <td class="small text-danger" style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
-                                            @t.LastError
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-warning me-1" title="Spustit hned"
-                                                    @onclick="() => TriggerNowAsync(t.Guid)">
-                                                <i class="bi bi-play-fill"></i>
-                                            </button>
-                                            <button class="btn btn-sm @(t.Enabled ? "btn-outline-secondary" : "btn-outline-success")"
-                                                    title="@(t.Enabled ? "Zakázat" : "Povolit")"
-                                                    @onclick="() => ToggleTaskAsync(t.Guid)">
-                                                <i class="bi bi-@(t.Enabled ? "pause-fill" : "play")"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    }
-                    @if (_taskError is not null)
-                    {
-                        <div class="alert alert-danger m-2 py-1 small">@_taskError</div>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- AI výsledky -->
-    <div class="row g-3 mt-0">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header fw-bold">Posledních 10 AI VIN výsledků</div>
-                <div class="card-body p-0">
-                    <table class="table table-sm table-hover mb-0">
-                        <thead class="table-secondary">
-                            <tr><th>Dotaz (Query)</th><th>AI odpověď (zkráceno)</th><th>Model</th><th>Ověřen</th><th>Datum</th></tr>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>VIN</th>
+                                <th>WMI</th>
+                                <th>Rok</th>
+                                <th>Platný</th>
+                                <th>Datum</th>
+                            </tr>
                         </thead>
                         <tbody>
-                            @foreach (var a in _recentAiVin)
+                            @foreach (var v in _recentVins)
                             {
                                 <tr>
-                                    <td><code class="small">@a.Query</code></td>
-                                    <td class="small text-truncate" style="max-width:300px">@a.Response</td>
-                                    <td class="small text-muted">@a.AiModel</td>
-                                    <td>@(a.IsVerified ? "✓" : "")</td>
-                                    <td class="small text-muted">@a.CreatedAt.ToString("dd.MM.yy")</td>
+                                    <td><code class="small">@v.Vin</code></td>
+                                    <td><code class="small">@v.Wmi</code></td>
+                                    <td class="small">@v.ModelYear</td>
+                                    <td>
+                                        @if (v.IsValid)
+                                        { <span class="badge bg-success">✓</span> }
+                                        else
+                                        { <span class="badge bg-danger">✗</span> }
+                                    </td>
+                                    <td class="small text-muted">@v.CreatedAt.ToString("dd.MM.yy HH:mm")</td>
                                 </tr>
                             }
                         </tbody>
                     </table>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- VinRandomizer tasky -->
+    <div class="ui-panel ui-anim-fade-up mt-3">
+        <div class="ui-panel-header">
+            <span class="ui-panel-title">
+                <i class="bi bi-robot text-accent"></i>Scheduled Tasks (VinRandomizer)
+            </span>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="LoadTasksAsync">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+        </div>
+        @if (!_tasks.Any())
+        {
+            <div class="text-muted small p-3">Žádné tasky — spustí se po prvním cyklu randomizeru.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Název</th>
+                            <th>Povoleno</th>
+                            <th>Naposledy</th>
+                            <th>Trvání</th>
+                            <th>Příště</th>
+                            <th>Chyba</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in _tasks)
+                        {
+                            <tr>
+                                <td class="small fw-semibold">@t.Name</td>
+                                <td>
+                                    @if (t.Enabled)
+                                    { <span class="badge bg-success">Ano</span> }
+                                    else
+                                    { <span class="badge bg-secondary">Ne</span> }
+                                </td>
+                                <td class="small text-muted">
+                                    @(t.LastRunAtUtc.HasValue ? t.LastRunAtUtc.Value.LocalDateTime.ToString("dd.MM.yy HH:mm") : "—")
+                                </td>
+                                <td class="small text-muted">
+                                    @(t.LastRunDurationMs > 0 ? $"{t.LastRunDurationMs / 1000}s" : "—")
+                                </td>
+                                <td class="small @(t.NextRunAtUtc <= DateTimeOffset.UtcNow ? "text-danger" : "text-muted")">
+                                    @t.NextRunAtUtc.LocalDateTime.ToString("dd.MM.yy HH:mm")
+                                </td>
+                                <td class="small text-danger" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                                    @t.LastError
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-warning me-1" title="Spustit hned"
+                                            @onclick="() => TriggerNowAsync(t.Guid)">
+                                        <i class="bi bi-play-fill"></i>
+                                    </button>
+                                    <button class="btn btn-sm @(t.Enabled ? "btn-outline-secondary" : "btn-outline-success")"
+                                            title="@(t.Enabled ? "Zakázat" : "Povolit")"
+                                            @onclick="() => ToggleTaskAsync(t.Guid)">
+                                        <i class="bi bi-@(t.Enabled ? "pause-fill" : "play")"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        @if (_taskError is not null)
+        {
+            <div class="alert alert-danger m-2 py-1 small">@_taskError</div>
+        }
+    </div>
+
+    <!-- AI výsledky -->
+    <div class="ui-panel ui-anim-fade-up mt-3">
+        <div class="ui-panel-header">
+            <span class="ui-panel-title">
+                <i class="bi bi-cpu text-accent"></i>Posledních 10 AI VIN výsledků
+            </span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead>
+                    <tr><th>Dotaz (Query)</th><th>AI odpověď (zkráceno)</th><th>Model</th><th>Ověřen</th><th>Datum</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in _recentAiVin)
+                    {
+                        <tr>
+                            <td><code class="small">@a.Query</code></td>
+                            <td class="small text-truncate" style="max-width:300px">@a.Response</td>
+                            <td class="small text-muted">@a.AiModel</td>
+                            <td>@(a.IsVerified ? "✓" : "")</td>
+                            <td class="small text-muted">@a.CreatedAt.ToString("dd.MM.yy")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
     </div>
 }
@@ -306,7 +298,7 @@ else
             await using var db = await DbFactory.CreateDbContextAsync();
             var task = await db.WebsiteTasks.FindAsync(id);
             if (task is null) return;
-            task.NextRunAtUtc = DateTimeOffset.UtcNow.AddSeconds(-1); // spustit hned
+            task.NextRunAtUtc = DateTimeOffset.UtcNow.AddSeconds(-1);
             await db.SaveChangesAsync();
             await LoadTasksAsync();
             Toast.ShowSuccess("Spuštěno", "Task byl úspěšně naplánován ke spuštění.");

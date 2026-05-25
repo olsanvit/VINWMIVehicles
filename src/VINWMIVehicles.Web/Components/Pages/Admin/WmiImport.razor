@@ -11,13 +11,21 @@
 
 <PageTitle>WMI Import (CSV) — VINWMIVehicles</PageTitle>
 
-<div class="d-flex align-items-center mb-3">
-    <h4 class="m-0"><i class="bi bi-cloud-upload me-2"></i>WMI Import (CSV)</h4>
+<div class="ui-page-header ui-anim-fade-up">
+    <div class="d-flex align-items-center gap-3">
+        <a href="/admin" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+        <h4 class="m-0"><i class="bi bi-cloud-upload me-2 text-accent"></i>WMI Import (CSV)</h4>
+    </div>
 </div>
 
-<div class="card mb-3">
-    <div class="card-header fw-bold">Formát CSV</div>
-    <div class="card-body">
+<!-- Formát CSV -->
+<div class="ui-panel ui-anim-fade-up">
+    <div class="ui-panel-header">
+        <span class="ui-panel-title">
+            <i class="bi bi-info-circle text-accent"></i>Formát CSV
+        </span>
+    </div>
+    <div class="p-3">
         <p class="mb-1">Vložte CSV text níže. Každý řádek = jeden WMI záznam. Záhlaví (header) je volitelné.</p>
         <code class="d-block mb-2">WMI,ManufacturerName,YearFrom,YearTo,Notes</code>
         <ul class="small text-muted mb-0">
@@ -30,23 +38,31 @@
     </div>
 </div>
 
-<div class="card mb-3">
-    <div class="card-body">
-        <label class="form-label fw-semibold">CSV text</label>
-        <textarea class="form-control font-monospace" rows="10"
-                  @bind="_csvText" placeholder="WMI,ManufacturerName,YearFrom,YearTo,Notes&#10;1HG,Honda,1981,,&#10;WBA,BMW,1975,,"></textarea>
+<!-- Upload -->
+<div class="ui-panel ui-anim-fade-up">
+    <div class="ui-panel-header">
+        <span class="ui-panel-title">
+            <i class="bi bi-textarea text-accent"></i>CSV text
+        </span>
+    </div>
+    <div class="p-3">
+        <textarea class="form-control font-monospace"
+                  style="background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1);color:var(--ui-text-1)"
+                  rows="10"
+                  @bind="_csvText"
+                  placeholder="WMI,ManufacturerName,YearFrom,YearTo,Notes&#10;1HG,Honda,1981,,&#10;WBA,BMW,1975,,"></textarea>
 
-        <div class="mt-3 d-flex gap-2">
-            <button class="btn btn-primary" @onclick="ParseAsync" disabled="@_busy">
-                <i class="bi bi-table me-1"></i> Analyzovat
+        <div class="mt-3 d-flex gap-2 flex-wrap align-items-center">
+            <button class="btn btn-primary btn-sm" @onclick="ParseAsync" disabled="@_busy">
+                <i class="bi bi-table me-1"></i>Analyzovat
             </button>
-            <button class="btn btn-success" @onclick="ImportAsync"
+            <button class="btn btn-success btn-sm" @onclick="ImportAsync"
                     disabled="@(!_parsed || _busy || !_rows.Any(r => r.IsValid))">
-                <i class="bi bi-cloud-upload me-1"></i> Importovat platné záznamy (@ValidCount)
+                <i class="bi bi-cloud-upload me-1"></i>Importovat platné záznamy (@ValidCount)
             </button>
             @if (_busy)
             {
-                <div class="spinner-border spinner-border-sm align-self-center text-secondary" role="status"></div>
+                <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
             }
         </div>
     </div>
@@ -54,7 +70,7 @@
 
 @if (_importResult is not null)
 {
-    <div class="alert @(_importResult.Success ? "alert-success" : "alert-danger") d-flex align-items-center gap-2">
+    <div class="alert @(_importResult.Success ? "alert-success" : "alert-danger") d-flex align-items-center gap-2 ui-anim-fade-up">
         <i class="bi bi-@(_importResult.Success ? "check-circle" : "x-circle")"></i>
         <span>@_importResult.Message</span>
     </div>
@@ -62,60 +78,60 @@
 
 @if (_errorMessage is not null)
 {
-    <div class="alert alert-danger">
+    <div class="alert alert-danger ui-anim-fade-up">
         <i class="bi bi-exclamation-triangle me-2"></i>@_errorMessage
     </div>
 }
 
 @if (_parsed && _rows.Any())
 {
-    <div class="card">
-        <div class="card-header fw-bold d-flex justify-content-between">
-            <span>Náhled (@_rows.Count řádků)</span>
-            <span>
-                <span class="badge bg-success me-1">@ValidCount platných</span>
-                <span class="badge bg-danger">@InvalidCount chybných</span>
+    <div class="ui-panel ui-anim-fade-up">
+        <div class="ui-panel-header">
+            <span class="ui-panel-title">
+                <i class="bi bi-table text-accent"></i>Náhled (@_rows.Count řádků)
             </span>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-sm table-hover mb-0">
-                    <thead class="table-secondary">
-                        <tr>
-                            <th>#</th>
-                            <th>WMI</th>
-                            <th>Výrobce</th>
-                            <th>Od</th>
-                            <th>Do</th>
-                            <th>Poznámka</th>
-                            <th>Stav</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var row in _rows)
-                        {
-                            <tr class="@(row.IsValid ? "" : "table-danger")">
-                                <td class="small text-muted">@row.LineNumber</td>
-                                <td><code class="small">@row.Wmi</code></td>
-                                <td class="small">@row.ManufacturerName</td>
-                                <td class="small">@row.YearFrom</td>
-                                <td class="small">@row.YearTo</td>
-                                <td class="small text-muted" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@row.Notes</td>
-                                <td>
-                                    @if (row.IsValid)
-                                    {
-                                        <span class="badge bg-success"><i class="bi bi-check"></i> OK</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-danger" title="@row.Error"><i class="bi bi-x"></i> @row.Error</span>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+            <div class="d-flex gap-1">
+                <span class="badge bg-success">@ValidCount platných</span>
+                <span class="badge bg-danger">@InvalidCount chybných</span>
             </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>WMI</th>
+                        <th>Výrobce</th>
+                        <th>Od</th>
+                        <th>Do</th>
+                        <th>Poznámka</th>
+                        <th>Stav</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _rows)
+                    {
+                        <tr class="@(row.IsValid ? "" : "table-danger")">
+                            <td class="small text-muted">@row.LineNumber</td>
+                            <td><code class="small">@row.Wmi</code></td>
+                            <td class="small">@row.ManufacturerName</td>
+                            <td class="small">@row.YearFrom</td>
+                            <td class="small">@row.YearTo</td>
+                            <td class="small text-muted" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@row.Notes</td>
+                            <td>
+                                @if (row.IsValid)
+                                {
+                                    <span class="badge bg-success"><i class="bi bi-check"></i> OK</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger" title="@row.Error"><i class="bi bi-x"></i> @row.Error</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
     </div>
 }
@@ -147,7 +163,6 @@
                 return;
             }
 
-            // Load manufacturer names from DB (case-insensitive lookup)
             await using var db = await DbFactory.CreateDbContextAsync();
             var manufacturers = await db.VehManufacturers
                 .Select(m => new { m.Guid, m.Name })
@@ -166,7 +181,6 @@
                 var trimmed = line.Trim();
                 if (string.IsNullOrWhiteSpace(trimmed)) continue;
 
-                // Skip header line (case-insensitive check for "WMI" in first column)
                 var parts = trimmed.Split(',');
                 if (parts.Length > 0 && parts[0].Trim().Equals("WMI", StringComparison.OrdinalIgnoreCase))
                     continue;
@@ -198,14 +212,12 @@
         var yearToStr = parts.Length > 3 ? parts[3].Trim() : "";
         row.Notes = parts.Length > 4 ? string.Join(",", parts[4..]).Trim() : null;
 
-        // Validate WMI
         if (row.Wmi.Length != 3)
         {
             row.Error = $"WMI musí mít 3 znaky (má {row.Wmi.Length})";
             return row;
         }
 
-        // Validate manufacturer
         if (string.IsNullOrWhiteSpace(row.ManufacturerName))
         {
             row.Error = "Chybí název výrobce";
@@ -220,7 +232,6 @@
 
         row.ManufacturerId = manufacturerId;
 
-        // Parse years (optional)
         if (!string.IsNullOrWhiteSpace(yearFromStr))
         {
             if (int.TryParse(yearFromStr, out var yf))
