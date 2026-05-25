@@ -38,7 +38,7 @@
             <div class="input-group input-group-sm">
                 <span class="input-group-text"><i class="bi bi-search"></i></span>
                 <input class="form-control" placeholder="@(ActiveTab == "wmi" ? "Hledat kód, zemi, region, výrobce…" : "Hledat VIN, výrobce, model…")"
-                       @bind="_search" @bind:event="oninput" @oninput="OnSearchChanged" />
+                       @bind="_search" @bind:event="oninput" />
                 @if (!string.IsNullOrEmpty(_search))
                 {
                     <button class="btn btn-outline-secondary" @onclick="ClearSearch">
@@ -165,7 +165,7 @@
         string.IsNullOrWhiteSpace(_search) ? WmiEntries :
         WmiEntries.Where(e =>
             (e.Code?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
-            (e.CodeType?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            e.CodeType.ToString().Contains(_search, StringComparison.OrdinalIgnoreCase) ||
             (e.CountryISO?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
             (e.Region?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
             e.Manufacturers.Any(m => m.Manufacturer?.OfficialName?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
