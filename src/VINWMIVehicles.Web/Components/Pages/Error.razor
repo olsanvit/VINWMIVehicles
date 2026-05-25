@@ -1,30 +1,31 @@
-﻿@page "/Error"
+@page "/Error"
 @using System.Diagnostics
 
-<PageTitle>Error</PageTitle>
+<PageTitle>Chyba</PageTitle>
 
-<h1 class="text-danger">Error.</h1>
-<h2 class="text-danger">An error occurred while processing your request.</h2>
+<div class="ui-panel ui-anim-fade-up text-center" style="max-width:580px;margin:60px auto;">
+    <div class="p-4">
+        <div style="font-size:2.5rem;margin-bottom:.5rem;">⚠️</div>
+        <h3 class="mb-1">Nastala chyba</h3>
+        <p class="text-muted small mb-3">Při zpracování požadavku došlo k neočekávané chybě.</p>
 
-@if (ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@RequestId</code>
-    </p>
-}
+        @if (ShowRequestId)
+        {
+            <div class="mb-3 p-2 rounded" style="background:rgba(255,255,255,0.05)">
+                <div class="text-muted small mb-1">Request ID</div>
+                <code class="text-warning">@RequestId</code>
+            </div>
+        }
 
-<h3>Development Mode</h3>
-<p>
-    Swapping to <strong>Development</strong> environment will display more detailed information about the error that occurred.
-</p>
-<p>
-    <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
-    It can result in displaying sensitive information from exceptions to end users.
-    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
-    and restarting the app.
-</p>
+        <div class="text-muted small">
+            Pro více detailů zapněte <strong>Development</strong> prostředí nastavením
+            <code>ASPNETCORE_ENVIRONMENT=Development</code> a restartujte aplikaci.
+        </div>
+        <a class="btn btn-primary btn-sm mt-3" href="/">Zpět na hlavní stránku</a>
+    </div>
+</div>
 
-@code{
+@code {
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
 
