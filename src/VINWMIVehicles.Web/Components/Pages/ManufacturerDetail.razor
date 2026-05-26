@@ -1,0 +1,270 @@
+@page "/manufacturers/{Id:guid}"
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+@using Microsoft.EntityFrameworkCore
+@using SharedServices.Models.VINWMIVehicles.Manufacturers
+@using SharedServices.Models.VINWMIVehicles.Vehicles
+@inject IDbContextFactory<AppDbContextVehicle> DbFactory
+@inject NavigationManager Nav
+
+<PageTitle>@(_manufacturer?.Name ?? "Výrobce") — VINWMIVehicles</PageTitle>
+
+@if (_loading)
+{
+    <div class="ui-anim-fade-up d-flex align-items-center gap-2 mt-4">
+        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+        <span class="text-muted">Načítám…</span>
+    </div>
+}
+else if (_manufacturer is null)
+{
+    <div class="ui-panel ui-anim-fade-up text-center p-4" style="max-width:480px;margin:60px auto;">
+        <div style="font-size:2.5rem">🔍</div>
+        <h4>Výrobce nenalezen</h4>
+        <a href="/manufacturers" class="btn btn-primary btn-sm mt-2">Zpět na seznam</a>
+    </div>
+}
+else
+{
+    <div class="ui-page-header ui-anim-fade-up">
+        <div class="d-flex align-items-center gap-3">
+            <a href="/manufacturers" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <h3 class="m-0">
+                <i class="bi bi-buildings me-2 text-accent"></i>@_manufacturer.Name
+                @if (!_manufacturer.IsActive)
+                { <span class="badge bg-danger ms-2 small">Neaktivní</span> }
+                else
+                { <span class="badge bg-success ms-2 small">Aktivní</span> }
+            </h3>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge bg-secondary">@_wmiAssignments.Count WMI kódů</span>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Info -->
+        <div class="col-lg-4">
+            <div class="ui-panel ui-anim-fade-up h-100">
+                <div class="ui-panel-header">
+                    <span class="ui-panel-title">
+                        <i class="bi bi-info-circle text-accent"></i>
+                        Informace
+                    </span>
+                </div>
+                <div class="p-3">
+                    <dl class="row mb-0 small">
+                        <dt class="col-5 text-muted">Název</dt>
+                        <dd class="col-7 fw-semibold">@_manufacturer.Name</dd>
+
+                        @if (!string.IsNullOrEmpty(_manufacturer.NameOfficial))
+                        {
+                            <dt class="col-5 text-muted">Oficíální název</dt>
+                            <dd class="col-7">@_manufacturer.NameOfficial</dd>
+                        }
+
+                        @if (!string.IsNullOrEmpty(_manufacturer.NameLocal))
+                        {
+                            <dt class="col-5 text-muted">Lokální název</dt>
+                            <dd class="col-7">@_manufacturer.NameLocal</dd>
+                        }
+
+                        @if (_manufacturer.Founded.HasValue)
+                        {
+                            <dt class="col-5 text-muted">Založeno</dt>
+                            <dd class="col-7">@_manufacturer.Founded</dd>
+                        }
+
+                        @if (_manufacturer.Dissolved.HasValue)
+                        {
+                            <dt class="col-5 text-muted">Zrušeno</dt>
+                            <dd class="col-7 text-danger">@_manufacturer.Dissolved</dd>
+                        }
+
+                        @if (!string.IsNullOrEmpty(_manufacturer.HeadquartersCity))
+                        {
+                            <dt class="col-5 text-muted">Sídlo</dt>
+                            <dd class="col-7">@_manufacturer.HeadquartersCity</dd>
+                        }
+
+                        @if (_manufacturer.Country is not null)
+                        {
+                            <dt class="col-5 text-muted">Země</dt>
+                            <dd class="col-7">@_manufacturer.Country.Name</dd>
+                        }
+
+                        @if (!string.IsNullOrEmpty(_manufacturer.StockSymbol))
+                        {
+                            <dt class="col-5 text-muted">Akcie</dt>
+                            <dd class="col-7">@_manufacturer.StockSymbol</dd>
+                        }
+
+                        @if (!string.IsNullOrEmpty(_manufacturer.Website))
+                        {
+                            <dt class="col-5 text-muted">Web</dt>
+                            <dd class="col-7">
+                                <a href="@_manufacturer.Website" target="_blank" class="text-accent text-decoration-none small">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>Web
+                                </a>
+                            </dd>
+                        }
+                    </dl>
+
+                    @if (_manufacturer.ParentManufacturer is not null)
+                    {
+                        <hr class="border-opacity-10" />
+                        <div class="small text-muted mb-1">Mateřský výrobce</div>
+                        <a href="/manufacturers/@_manufacturer.ParentManufacturer.Guid"
+                           class="fw-semibold text-decoration-none">
+                            <i class="bi bi-buildings me-1 text-accent"></i>@_manufacturer.ParentManufacturer.Name
+                        </a>
+                    }
+
+                    @if (_subsidiaries.Count > 0)
+                    {
+                        <hr class="border-opacity-10" />
+                        <div class="small text-muted mb-2">Dceřiné společnosti (@_subsidiaries.Count)</div>
+                        <div class="d-flex flex-column gap-1">
+                            @foreach (var s in _subsidiaries)
+                            {
+                                <a href="/manufacturers/@s.Guid" class="text-decoration-none small">
+                                    <i class="bi bi-arrow-return-right me-1 text-muted"></i>@s.Name
+                                </a>
+                            }
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(_manufacturer.Description))
+                    {
+                        <hr class="border-opacity-10" />
+                        <p class="small text-muted mb-0">@_manufacturer.Description</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <!-- WMI codes -->
+            <div class="ui-panel ui-anim-fade-up mb-3">
+                <div class="ui-panel-header">
+                    <span class="ui-panel-title">
+                        <i class="bi bi-code-slash text-accent"></i>
+                        WMI kódy
+                    </span>
+                    <span class="badge bg-secondary">@_wmiAssignments.Count</span>
+                </div>
+                @if (!_wmiAssignments.Any())
+                {
+                    <div class="p-3 text-muted small">Žádné WMI kódy.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>WMI kód</th>
+                                    <th class="text-center">Od</th>
+                                    <th class="text-center">Do</th>
+                                    <th>Typ vozidla</th>
+                                    <th class="text-center">Status</th>
+                                    <th>Zdroj</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var w in _wmiAssignments.OrderBy(w => w.Wmi))
+                                {
+                                    <tr>
+                                        <td>
+                                            <a href="/wmi-search?q=@w.Wmi" class="fw-bold font-monospace text-decoration-none text-accent">
+                                                @w.Wmi
+                                            </a>
+                                        </td>
+                                        <td class="text-center text-muted small">@(w.YearFrom?.ToString() ?? "—")</td>
+                                        <td class="text-center text-muted small">@(w.YearTo?.ToString() ?? "∞")</td>
+                                        <td class="text-muted small">@(w.VehicleTypeScope ?? "—")</td>
+                                        <td class="text-center">
+                                            @if (w.IsActive)
+                                            { <span class="badge bg-success small">Aktivní</span> }
+                                            else
+                                            { <span class="badge bg-danger small">Neaktivní</span> }
+                                        </td>
+                                        <td class="text-muted small">@w.Source</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+            <!-- Brands -->
+            @if (_brands.Count > 0)
+            {
+                <div class="ui-panel ui-anim-fade-up">
+                    <div class="ui-panel-header">
+                        <span class="ui-panel-title">
+                            <i class="bi bi-tag text-accent"></i>
+                            Značky
+                        </span>
+                        <span class="badge bg-secondary">@_brands.Count</span>
+                    </div>
+                    <div class="p-3 d-flex gap-2 flex-wrap">
+                        @foreach (var b in _brands.OrderBy(b => b.Name))
+                        {
+                            <span class="badge bg-secondary">@b.Name</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private bool _loading = true;
+    private Manufacturer? _manufacturer;
+    private List<WmiAssignment> _wmiAssignments = new();
+    private List<Manufacturer> _subsidiaries = new();
+    private List<Brand> _brands = new();
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _manufacturer = await db.VehManufacturers
+            .AsNoTracking()
+            .Include(m => m.Country)
+            .Include(m => m.ParentManufacturer)
+            .FirstOrDefaultAsync(m => m.Guid == Id);
+
+        if (_manufacturer is not null)
+        {
+            _wmiAssignments = await db.WmiAssignments
+                .AsNoTracking()
+                .Where(w => w.ManufacturerId == Id)
+                .OrderBy(w => w.Wmi)
+                .ToListAsync();
+
+            _subsidiaries = await db.VehManufacturers
+                .AsNoTracking()
+                .Where(m => m.ParentManufacturerId == Id)
+                .ToListAsync();
+
+            _brands = await db.VehBrands
+                .AsNoTracking()
+                .Where(b => b.ManufacturerId == Id)
+                .ToListAsync();
+        }
+
+        _loading = false;
+    }
+}

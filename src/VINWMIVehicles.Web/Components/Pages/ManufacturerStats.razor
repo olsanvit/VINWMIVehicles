@@ -64,7 +64,7 @@ else
                     }
                     @foreach (var m in _manufacturers)
                     {
-                        <tr style="cursor:pointer" @onclick="() => Nav.NavigateTo($\"/wmi-search\")">
+                        <tr style="cursor:pointer" @onclick="() => Nav.NavigateTo($\"/manufacturers/{m.Guid}\")">
                             <td>
                                 <div class="fw-semibold">@m.Name</div>
                                 @if (!string.IsNullOrEmpty(m.HeadquartersCity))
