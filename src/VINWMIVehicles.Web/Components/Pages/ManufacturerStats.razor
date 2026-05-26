@@ -1,0 +1,190 @@
+@page "/manufacturers"
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+@using Microsoft.EntityFrameworkCore
+@using SharedServices.Models.VINWMIVehicles.Manufacturers
+@inject IDbContextFactory<AppDbContextVehicle> DbFactory
+@inject NavigationManager Nav
+
+<PageTitle>Výrobci — VINWMIVehicles</PageTitle>
+
+<div class="ui-page-header ui-anim-fade-up">
+    <h3><i class="bi bi-buildings"></i> Výrobci vozidel</h3>
+    <span class="badge bg-secondary">@_total výrobců</span>
+</div>
+
+@if (_loading)
+{
+    <div class="ui-anim-fade-up d-flex align-items-center gap-2 mt-3">
+        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+        <span class="text-muted">Načítám výrobce…</span>
+    </div>
+}
+else
+{
+    <UiSearchBar @bind-Value="_search" Placeholder="Hledat výrobce…"
+                 Count="_total" CountLabel="výrobců"
+                 OnSearch="ResetAndLoad">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <label class="d-flex align-items-center gap-1 small text-muted">
+                <input type="checkbox" @bind="_onlyActive" @bind:after="OnFilterChanged" />
+                Pouze aktivní
+            </label>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="ResetFilters">
+                <i class="bi bi-x-circle me-1"></i>Reset
+            </button>
+        </div>
+    </UiSearchBar>
+
+    <div class="ui-panel ui-anim-fade-up">
+        <div class="ui-panel-header">
+            <span class="ui-panel-title">
+                <i class="bi bi-buildings text-accent"></i>
+                Databáze výrobců
+            </span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Název</th>
+                        <th>Oficiální název</th>
+                        <th class="text-center">Zal.</th>
+                        <th class="text-center">WMI</th>
+                        <th class="text-center">Značky</th>
+                        <th class="text-center">Stav</th>
+                        <th>Web</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!_manufacturers.Any())
+                    {
+                        <tr><td colspan="7" class="text-muted text-center py-4">Žádní výrobci nenalezeni.</td></tr>
+                    }
+                    @foreach (var m in _manufacturers)
+                    {
+                        <tr style="cursor:pointer" @onclick="() => Nav.NavigateTo($\"/wmi-search\")">
+                            <td>
+                                <div class="fw-semibold">@m.Name</div>
+                                @if (!string.IsNullOrEmpty(m.HeadquartersCity))
+                                {
+                                    <div class="text-muted" style="font-size:.7rem;">@m.HeadquartersCity</div>
+                                }
+                            </td>
+                            <td class="small text-muted">@(m.NameOfficial ?? "—")</td>
+                            <td class="text-center small text-muted">@(m.Founded?.ToString() ?? "—")</td>
+                            <td class="text-center"><span class="badge bg-secondary">@m.WmiAssignments.Count</span></td>
+                            <td class="text-center"><span class="badge bg-secondary">@m.Brands.Count</span></td>
+                            <td class="text-center">
+                                @if (m.IsActive)
+                                {
+                                    <span class="badge bg-success small">Aktivní</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary small">Neaktivní</span>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(m.Website))
+                                {
+                                    <a href="@m.Website" target="_blank" rel="noopener" class="text-accent small" @onclick:stopPropagation>
+                                        <i class="bi bi-box-arrow-up-right"></i>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="px-3 py-2 border-top border-opacity-10">
+            <Paginator TotalItems="_total" PageSize="PageSize" CurrentPage="_page"
+                       OnPageChanged="async p => { _page = p; await LoadAsync(); }" />
+        </div>
+    </div>
+
+    <!-- Stats summary -->
+    <div class="row g-3 mt-1">
+        <div class="col-md-4">
+            <div class="ui-panel ui-anim-fade-up text-center p-3">
+                <div class="fw-bold fs-4 text-accent">@_activeCount</div>
+                <div class="text-muted small">Aktivních výrobců</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="ui-panel ui-anim-fade-up text-center p-3">
+                <div class="fw-bold fs-4 text-accent">@_totalWmiCount</div>
+                <div class="text-muted small">Celkem WMI přiřazení</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="ui-panel ui-anim-fade-up text-center p-3">
+                <div class="fw-bold fs-4 text-accent">@_totalBrandsCount</div>
+                <div class="text-muted small">Celkem značek</div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private List<Manufacturer> _manufacturers = new();
+    private int _page = 1;
+    private const int PageSize = 25;
+    private int _total;
+    private int _activeCount;
+    private int _totalWmiCount;
+    private int _totalBrandsCount;
+
+    private string _search = string.Empty;
+    private bool _onlyActive;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _activeCount = await db.VehManufacturers.CountAsync(m => m.IsActive);
+        _totalWmiCount = await db.WmiAssignments.CountAsync();
+        _totalBrandsCount = await db.Brands.CountAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var query = db.VehManufacturers
+            .Include(m => m.WmiAssignments)
+            .Include(m => m.Brands)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(_search))
+            query = query.Where(m => m.Name.Contains(_search) || (m.NameOfficial != null && m.NameOfficial.Contains(_search)));
+        if (_onlyActive)
+            query = query.Where(m => m.IsActive);
+
+        _total = await query.CountAsync();
+        _manufacturers = await query
+            .OrderBy(m => m.Name)
+            .Skip((_page - 1) * PageSize)
+            .Take(PageSize)
+            .ToListAsync();
+        _loading = false;
+    }
+
+    private async Task ResetAndLoad() { _page = 1; await LoadAsync(); }
+    private async Task OnFilterChanged() { _page = 1; await LoadAsync(); }
+
+    private async Task ResetFilters()
+    {
+        _search = string.Empty;
+        _onlyActive = false;
+        _page = 1;
+        await LoadAsync();
+    }
+}

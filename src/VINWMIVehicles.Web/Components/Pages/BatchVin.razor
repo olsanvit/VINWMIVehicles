@@ -1,0 +1,164 @@
+@page "/batch-vin"
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+@using Microsoft.EntityFrameworkCore
+@using SharedServices.Models.Car
+@inject IDbContextFactory<AppDbContextVehicle> DbFactory
+
+<PageTitle>Batch VIN — VINWMIVehicles</PageTitle>
+
+<div class="ui-page-header ui-anim-fade-up">
+    <h3><i class="bi bi-list-ol"></i> Batch VIN Lookup</h3>
+    <span class="text-muted small">Více VIN najednou</span>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="ui-panel ui-anim-fade-up h-100">
+            <div class="ui-panel-header">
+                <span class="ui-panel-title">
+                    <i class="bi bi-input-cursor-text text-accent"></i>
+                    VIN kódy
+                </span>
+            </div>
+            <div class="p-3">
+                <p class="text-muted small mb-2">Zadejte každý VIN na nový řádek (max 50).</p>
+                <textarea class="form-control font-monospace"
+                          style="font-size:.85rem;letter-spacing:.04em;background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1);color:var(--ui-text-1)"
+                          rows="12"
+                          placeholder="TMBAB12345C678901&#10;WBA3A5C55CF256521&#10;1HGBH41JXMN109186"
+                          @bind="_input" @bind:event="oninput"></textarea>
+                <div class="mt-2 d-flex gap-2 align-items-center">
+                    <button class="btn btn-primary btn-sm" @onclick="LookupAsync"
+                            disabled="@(_loading || string.IsNullOrWhiteSpace(_input))">
+                        @if (_loading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        <i class="bi bi-search me-1"></i>Vyhledat
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="Clear">
+                        <i class="bi bi-x-circle me-1"></i>Vymazat
+                    </button>
+                    <span class="text-muted small ms-auto">@_vinCount VIN kódů</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="ui-panel ui-anim-fade-up h-100">
+            <div class="ui-panel-header">
+                <span class="ui-panel-title">
+                    <i class="bi bi-table text-accent"></i>
+                    Výsledky
+                </span>
+                @if (_results.Count > 0)
+                {
+                    <span class="badge bg-secondary">@_results.Count(r => r.Found) nalezeno / @_results.Count</span>
+                }
+            </div>
+            @if (_results.Count == 0 && !_loading)
+            {
+                <div class="p-3 text-muted small">
+                    Výsledky se zobrazí po vyhledání.
+                </div>
+            }
+            else if (_results.Count > 0)
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>VIN</th>
+                                <th>Make / Model</th>
+                                <th>Rok</th>
+                                <th>Typ</th>
+                                <th>Palivo</th>
+                                <th class="text-center">Stav</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in _results)
+                            {
+                                <tr class="@(!r.Found ? "opacity-50" : "")">
+                                    <td><code class="small">@r.Vin</code></td>
+                                    @if (r.Found && r.Record is not null)
+                                    {
+                                        <td class="fw-semibold small">@r.Record.Make @r.Record.Model</td>
+                                        <td class="small text-muted">@(r.Record.ModelYear ?? "—")</td>
+                                        <td class="small text-muted">@(r.Record.VehicleType ?? "—")</td>
+                                        <td class="small text-muted">@(r.Record.FuelTypePrimary ?? "—")</td>
+                                        <td class="text-center"><span class="badge bg-success small">Nalezen</span></td>
+                                    }
+                                    else
+                                    {
+                                        <td colspan="4" class="text-muted small">Záznam nenalezen v databázi</td>
+                                        <td class="text-center"><span class="badge bg-secondary small">Nenalezen</span></td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _input = string.Empty;
+    private bool _loading;
+    private List<VinResult> _results = new();
+    private int _vinCount => _input
+        .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+        .Select(l => l.Trim())
+        .Count(l => l.Length > 0);
+
+    private async Task LookupAsync()
+    {
+        var vins = _input
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(l => l.Trim().ToUpperInvariant())
+            .Where(l => l.Length > 0)
+            .Distinct()
+            .Take(50)
+            .ToList();
+
+        if (vins.Count == 0) return;
+        _loading = true;
+        _results = new();
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var found = await db.VinInfos
+            .Where(v => v.Vin != null && vins.Contains(v.Vin))
+            .ToListAsync();
+
+        var foundDict = found
+            .GroupBy(v => v.Vin?.ToUpperInvariant() ?? "")
+            .ToDictionary(g => g.Key, g => g.First());
+
+        _results = vins.Select(vin => new VinResult
+        {
+            Vin = vin,
+            Found = foundDict.ContainsKey(vin),
+            Record = foundDict.TryGetValue(vin, out var r) ? r : null
+        }).ToList();
+
+        _loading = false;
+    }
+
+    private void Clear()
+    {
+        _input = string.Empty;
+        _results = new();
+    }
+
+    private class VinResult
+    {
+        public string Vin { get; set; } = "";
+        public bool Found { get; set; }
+        public VinInfo? Record { get; set; }
+    }
+}
