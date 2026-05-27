@@ -66,7 +66,7 @@ else
                     {
                         <tr style="cursor:pointer" @onclick="() => Nav.NavigateTo($\"/manufacturers/{m.Guid}\")">
                             <td>
-                                <div class="fw-semibold">@m.Name</div>
+                                <div class="fw-semibold"><a href="/manufacturers/@m.Guid" class="text-decoration-none" @onclick:stopPropagation>@m.Name</a></div>
                                 @if (!string.IsNullOrEmpty(m.HeadquartersCity))
                                 {
                                     <div class="text-muted" style="font-size:.7rem;">@m.HeadquartersCity</div>
