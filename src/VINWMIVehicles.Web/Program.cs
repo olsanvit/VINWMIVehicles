@@ -6,6 +6,7 @@ using Blazored.Modal;
 using Blazored.SessionStorage;
 using MercenariesAndBeasts.Infrastructure;
 using MercenariesAndBeasts.Infrastructure.Auth;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -130,6 +131,10 @@ if (string.IsNullOrWhiteSpace(builder.Configuration["OpenAI:ApiKey"]))
 if (string.IsNullOrWhiteSpace(builder.Configuration["Authentication:Google:ClientId"]))
     Log.Warning("VINWMIVehicles: Google OAuth ClientId is not configured — Google login will fail");
 
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 var pathBase = builder.Configuration["PathBase"];
 if (!string.IsNullOrWhiteSpace(pathBase))
     app.UsePathBase(pathBase);
