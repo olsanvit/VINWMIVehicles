@@ -228,9 +228,9 @@ else
     [Parameter] public Guid Id { get; set; }
 
     private bool _loading = true;
-    private Manufacturer? _manufacturer;
+    private SharedServices.Models.VINWMIVehicles.Manufacturers.Manufacturer? _manufacturer;
     private List<WmiAssignment> _wmiAssignments = new();
-    private List<Manufacturer> _subsidiaries = new();
+    private List<SharedServices.Models.VINWMIVehicles.Manufacturers.Manufacturer> _subsidiaries = new();
     private List<Brand> _brands = new();
 
     protected override async Task OnParametersSetAsync() => await LoadAsync();
