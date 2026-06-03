@@ -183,7 +183,9 @@ app.MapGet("/Identity/Account/ExternalLogin/Callback", async (
     HttpContext http,
     string? returnUrl,
     SignInManager<AppUser> signInManager,
-    UserManager<AppUser> userManager) =>
+    UserManager<AppUser> userManager,
+    IWebHostEnvironment env,
+    IConfiguration config) =>
 {
     returnUrl ??= "/";
     var info = await signInManager.GetExternalLoginInfoAsync();
@@ -194,7 +196,15 @@ app.MapGet("/Identity/Account/ExternalLogin/Callback", async (
         info.LoginProvider, info.ProviderKey, isPersistent: true);
 
     if (signIn.Succeeded)
+    {
+        var signedInUser = await userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+        if (signedInUser is not null)
+        {
+            var denied = await MercenariesAndBeasts.Infrastructure.Auth.AccessGate.CheckAsync(signedInUser, signInManager, env, config);
+            if (denied is not null) return Results.Redirect(denied);
+        }
         return Results.Redirect(returnUrl);
+    }
 
     // First-time Google login — auto-create account
     var email = info.Principal.FindFirstValue(ClaimTypes.Email) ?? "";
@@ -216,6 +226,8 @@ app.MapGet("/Identity/Account/ExternalLogin/Callback", async (
     {
         await userManager.AddLoginAsync(existing, info);
         await signInManager.SignInAsync(existing, isPersistent: true);
+        var deniedExisting = await MercenariesAndBeasts.Infrastructure.Auth.AccessGate.CheckAsync(existing, signInManager, env, config);
+        if (deniedExisting is not null) return Results.Redirect(deniedExisting);
         return Results.Redirect(returnUrl);
     }
 
