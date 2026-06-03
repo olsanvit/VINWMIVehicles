@@ -218,16 +218,20 @@ app.MapGet("/Identity/Account/ExternalLogin/Callback", async (
 });
 
 // ── Migrate DB + Seed admin ────────────────────────────────────────────────
-using (var scope = app.Services.CreateScope())
+try
 {
-    var services    = scope.ServiceProvider;
-    var db          = services.GetRequiredService<AppDbContextVehicle>();
-    var userManager = services.GetRequiredService<UserManager<AppUser>>();
-    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+    using (var scope = app.Services.CreateScope())
+    {
+        var services    = scope.ServiceProvider;
+        var db          = services.GetRequiredService<AppDbContextVehicle>();
+        var userManager = services.GetRequiredService<UserManager<AppUser>>();
+        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
 
-    await db.Database.MigrateAsync();
-    await SeedAdminAsync(userManager, roleManager);
+        await db.Database.MigrateAsync();
+        await SeedAdminAsync(userManager, roleManager);
+    }
 }
+catch (Exception ex) { Log.Warning(ex, "DB migration/seed skipped — DB not available"); }
 
 app.Lifetime.ApplicationStopping.Register(() =>
     Log.Warning("Application stopping — flushing logs..."));
