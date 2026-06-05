@@ -84,6 +84,7 @@ builder.Services.AddMudServices();
 builder.Services.AddRadzenComponents();
 builder.Services.AddScoped<UiLibraryService>();
 builder.Services.AddScoped<AlertService>();
+builder.Services.AddScoped<LoadingService>();
 builder.Services.AddSingleton<SharedServices.Services.ThemeService>(_ => new SharedServices.Services.ThemeService(builder.Configuration));
 builder.Services.AddBlazoredModal();
 builder.Services.AddBlazoredLocalStorage();
