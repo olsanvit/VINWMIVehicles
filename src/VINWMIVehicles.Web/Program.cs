@@ -272,17 +272,12 @@ static async Task SeedAdminAsync(
     UserManager<AppUser> userManager,
     RoleManager<IdentityRole> roleManager)
 {
-    const string adminRole = "Admin";
+    // Vytvoř všechny 3 role
+    foreach (var r in new[] { "Admin", "Moderator", "LoginUser" })
+        if (!await roleManager.RoleExistsAsync(r))
+            await roleManager.CreateAsync(new IdentityRole(r));
 
-    if (!await roleManager.RoleExistsAsync(adminRole))
-        await roleManager.CreateAsync(new IdentityRole(adminRole));
-
-    await EnsureAdminAsync(userManager, adminRole,
-        email: "admin@local",
-        username: "admin",
-        password: "Admin123.");
-
-    await EnsureAdminAsync(userManager, adminRole,
+    await EnsureAdminAsync(userManager,
         email: "olsanskyvitek@gmail.com",
         username: "vitek",
         password: "Vitek575");
@@ -290,7 +285,6 @@ static async Task SeedAdminAsync(
 
 static async Task EnsureAdminAsync(
     UserManager<AppUser> userManager,
-    string adminRole,
     string email,
     string username,
     string password)
@@ -301,10 +295,12 @@ static async Task EnsureAdminAsync(
     {
         user = new AppUser
         {
-            UserName = username,
-            Email = email,
-            EmailConfirmed = true,
-            IsAdmin = true
+            UserName           = username,
+            Email              = email,
+            EmailConfirmed     = true,
+            IsAdmin            = true,
+            IsWhitelisted      = true,
+            MustChangePassword = true
         };
         var result = await userManager.CreateAsync(user, password);
         if (!result.Succeeded)
@@ -317,8 +313,10 @@ static async Task EnsureAdminAsync(
         await userManager.UpdateAsync(user);
     }
 
-    if (!await userManager.IsInRoleAsync(user, adminRole))
-        await userManager.AddToRoleAsync(user, adminRole);
+    // Admin dostane všechny 3 role (hierarchie)
+    foreach (var role in new[] { "Admin", "Moderator", "LoginUser" })
+        if (!await userManager.IsInRoleAsync(user, role))
+            await userManager.AddToRoleAsync(user, role);
 }
 
 // ── No-op IEmailSender ────────────────────────────────────────────────────
