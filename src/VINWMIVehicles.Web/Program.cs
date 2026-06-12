@@ -82,17 +82,9 @@ builder.Services.AddSingleton<Microsoft.AspNetCore.Identity.UI.Services.IEmailSe
 // Shared UI services
 builder.Services.AddMudServices();
 builder.Services.AddRadzenComponents();
-builder.Services.AddScoped<UiLibraryService>();
-builder.Services.AddScoped<AlertService>();
-builder.Services.AddScoped<LoadingService>();
-builder.Services.AddSingleton<SharedServices.Services.ThemeService>(_ => new SharedServices.Services.ThemeService(builder.Configuration));
-builder.Services.AddBlazoredModal();
-builder.Services.AddBlazoredLocalStorage();
-builder.Services.AddBlazoredSessionStorage();
-builder.Services.AddApexCharts();
+builder.Services.AddSharedUI(builder.Configuration);
 
 // Vehicle services
-builder.Services.AddScoped<ToastService>();
 builder.Services.AddScoped<AchievementService>(sp =>
     new AchievementService(
         sp.GetRequiredService<ToastService>(),
