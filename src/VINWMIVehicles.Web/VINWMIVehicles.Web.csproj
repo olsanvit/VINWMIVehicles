@@ -10,7 +10,6 @@
     <NuGetAudit>false</NuGetAudit>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
     <RootNamespace>VINWMIVehicles</RootNamespace>
-    <AssemblyName>VINWMIVehicles</AssemblyName>
     <UserSecretsId>vin-wmi-vehicles-dev</UserSecretsId>
   </PropertyGroup>
 

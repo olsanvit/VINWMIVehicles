@@ -81,6 +81,7 @@ builder.Services.AddSingleton<Microsoft.AspNetCore.Identity.UI.Services.IEmailSe
 
 // Shared UI services
 builder.Services.AddMudServices();
+builder.Services.AddBlazoredModal();
 builder.Services.AddRadzenComponents();
 builder.Services.AddSharedUI(builder.Configuration);
 
