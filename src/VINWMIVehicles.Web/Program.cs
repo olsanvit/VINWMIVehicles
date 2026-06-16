@@ -95,6 +95,7 @@ builder.Services.AddScoped<AchievementService>(sp =>
     });
 builder.Services.AddScoped<ErrorService<AppDbContextVehicle>>();
 builder.Services.AddScoped<EfCoreService<AppDbContextVehicle>>();
+builder.Services.AddGlobalErrorLogging<AppDbContextVehicle>();
 builder.Services.AddScoped<ChatGPTWMI>();
 builder.Services.AddScoped<ChatGptAsker>(_ => new ChatGptAsker(apiKey: openAiKey, isSimple: false));
 // Typed HTTP client — konfiguruje HttpClient a registruje NhtsaService jako INhtsaService v jednom
