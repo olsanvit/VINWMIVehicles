@@ -6,6 +6,7 @@ using Blazored.Modal;
 using Blazored.SessionStorage;
 using MercenariesAndBeasts.Infrastructure;
 using MercenariesAndBeasts.Infrastructure.Auth;
+using MercenariesAndBeasts.Infrastructure.Localization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -84,6 +85,7 @@ builder.Services.AddMudServices();
 builder.Services.AddBlazoredModal();
 builder.Services.AddRadzenComponents();
 builder.Services.AddSharedUI(builder.Configuration);
+builder.Services.AddSimpleLocalization();
 
 // Vehicle services
 builder.Services.AddScoped<AchievementService>(sp =>
@@ -146,12 +148,14 @@ if (!app.Environment.IsProduction())
 
 app.MapStaticAssets();
 app.UseStaticFiles();
+app.UseRequestLocalization();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapRazorPages();   // Identity UI scaffolded pages
+app.MapMabCultureEndpoint();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
