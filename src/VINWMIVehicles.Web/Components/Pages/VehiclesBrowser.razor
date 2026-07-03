@@ -1,0 +1,254 @@
+@page "/vehicles"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using Microsoft.EntityFrameworkCore
+@using SharedServices.Models.VINWMIVehicles.Vehicles
+@inject IDbContextFactory<AppDbContextVehicle> DbFactory
+@inject NavigationManager Nav
+
+<PageTitle>Vozidla — VINWMIVehicles</PageTitle>
+
+<div class="ui-page-header ui-anim-fade-up">
+    <h3><i class="bi bi-car-front-fill me-2"></i>Prohlížeč vozidel</h3>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0 small">
+            <li class="breadcrumb-item">
+                @if (_selectedBrand is not null)
+                {
+                    <button class="btn btn-link p-0 text-muted small" @onclick="ClearAll">Značky</button>
+                }
+                else { <span class="text-muted">Značky</span> }
+            </li>
+            @if (_selectedBrand is not null)
+            {
+                <li class="breadcrumb-item">
+                    @if (_selectedSeries is not null)
+                    {
+                        <button class="btn btn-link p-0 text-muted small" @onclick="ClearSeries">@_selectedBrand.Name</button>
+                    }
+                    else { <span class="text-muted">@_selectedBrand.Name</span> }
+                </li>
+            }
+            @if (_selectedSeries is not null)
+            {
+                <li class="breadcrumb-item text-muted">@_selectedSeries.Name</li>
+            }
+        </ol>
+    </nav>
+</div>
+
+@if (_loading)
+{
+    <div class="ui-anim-fade-up d-flex align-items-center gap-2 mt-3">
+        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+        <span class="text-muted">Načítám…</span>
+    </div>
+}
+else if (_selectedSeries is not null)
+{
+    @* ── Model list ──────────────────────────────────────────── *@
+    <div class="ui-panel ui-anim-fade-up">
+        <div class="ui-panel-header">
+            <span class="ui-panel-title">
+                <i class="bi bi-list-ul text-accent"></i>
+                Modely — @_selectedBrand!.Name @_selectedSeries.Name
+            </span>
+            <span class="badge bg-secondary">@_models.Count modelů</span>
+        </div>
+        @if (!_models.Any())
+        {
+            <div class="p-3 text-muted small">Žádné modely.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Model / Trim</th>
+                            <th class="text-center">Roky</th>
+                            <th>Motor</th>
+                            <th class="text-center">kW</th>
+                            <th>Pohon</th>
+                            <th>Palivo</th>
+                            <th class="text-center">Dveře</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var m in _models.OrderBy(m => m.YearFrom))
+                        {
+                            <tr>
+                                <td class="fw-semibold">
+                                    @m.Name
+                                    @if (!string.IsNullOrEmpty(m.Trim))
+                                    {
+                                        <span class="badge bg-secondary ms-1 small">@m.Trim</span>
+                                    }
+                                </td>
+                                <td class="text-center text-muted small">
+                                    @(m.YearFrom?.ToString() ?? "?") — @(m.YearTo?.ToString() ?? "dosud")
+                                </td>
+                                <td class="text-muted small">
+                                    @if (!string.IsNullOrEmpty(m.EngineCode))
+                                    {
+                                        <span>@m.EngineCode</span>
+                                    }
+                                    @if (m.DisplacementCc.HasValue)
+                                    {
+                                        <span class="ms-1">@((m.DisplacementCc.Value / 1000.0).ToString("F1"))L</span>
+                                    }
+                                </td>
+                                <td class="text-center text-muted small">@(m.PowerKw?.ToString() ?? "—")</td>
+                                <td class="text-muted small">@(m.DriveType?.ToString() ?? "—")</td>
+                                <td class="text-muted small">@(m.FuelType?.ToString() ?? "—")</td>
+                                <td class="text-center text-muted small">@(m.Doors?.ToString() ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+else if (_selectedBrand is not null)
+{
+    @* ── Series list ─────────────────────────────────────────── *@
+    <div class="ui-panel ui-anim-fade-up">
+        <div class="ui-panel-header">
+            <span class="ui-panel-title">
+                <i class="bi bi-layers text-accent"></i>
+                Série — @_selectedBrand.Name
+            </span>
+            <span class="badge bg-secondary">@_series.Count sérií</span>
+        </div>
+        @if (!_series.Any())
+        {
+            <div class="p-3 text-muted small">Žádné série pro tuto značku.</div>
+        }
+        else
+        {
+            <div class="row g-2 p-3">
+                @foreach (var s in _series.OrderBy(s => s.Name))
+                {
+                    <div class="col-sm-6 col-md-4 col-lg-3">
+                        <button class="btn btn-outline-secondary w-100 text-start"
+                                @onclick="() => SelectSeries(s)">
+                            <div class="fw-semibold">@s.Name</div>
+                            @if (!string.IsNullOrEmpty(s.GenerationName))
+                            {
+                                <div class="text-muted small">@s.GenerationName</div>
+                            }
+                            @if (s.GenerationFrom.HasValue)
+                            {
+                                <div class="text-muted small">@s.GenerationFrom — @(s.GenerationTo?.ToString() ?? "dosud")</div>
+                            }
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+else
+{
+    @* ── Brand list ──────────────────────────────────────────── *@
+    <div class="ui-panel ui-anim-fade-up mb-3">
+        <div class="p-3 d-flex gap-3 align-items-end flex-wrap">
+            <div>
+                <input class="form-control form-control-sm" style="min-width:200px"
+                       placeholder="Hledat značku…" @bind="_search" @bind:event="oninput" />
+            </div>
+            <label class="d-flex align-items-center gap-1 small text-muted">
+                <input type="checkbox" @bind="_onlyActive" />
+                Jen aktivní
+            </label>
+        </div>
+    </div>
+    <div class="row g-2 ui-anim-fade-up">
+        @foreach (var b in FilteredBrands.Take(200))
+        {
+            <div class="col-sm-6 col-md-4 col-lg-3">
+                <button class="btn btn-outline-secondary w-100 text-start" @onclick="() => SelectBrand(b)">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-semibold">@b.Name</div>
+                            @if (!string.IsNullOrEmpty(b.NameOfficial) && b.NameOfficial != b.Name)
+                            {
+                                <div class="text-muted small">@b.NameOfficial</div>
+                            }
+                        </div>
+                        <div>
+                            @if (!b.IsActive)
+                            {
+                                <span class="badge bg-secondary small">Neaktivní</span>
+                            }
+                            @if (b.Founded.HasValue)
+                            {
+                                <div class="text-muted" style="font-size:.65rem">@b.Founded</div>
+                            }
+                        </div>
+                    </div>
+                </button>
+            </div>
+        }
+        @if (!FilteredBrands.Any())
+        {
+            <div class="col-12 text-center text-muted py-4">Žádné značky nenalezeny.</div>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private string _search = "";
+    private bool _onlyActive = true;
+
+    private Brand? _selectedBrand;
+    private Series? _selectedSeries;
+
+    private List<Brand> _brands = [];
+    private List<Series> _series = [];
+    private List<VehicleModel> _models = [];
+
+    private IEnumerable<Brand> FilteredBrands
+    {
+        get
+        {
+            var q = _brands.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(_search))
+                q = q.Where(b => b.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
+            if (_onlyActive)
+                q = q.Where(b => b.IsActive);
+            return q.OrderBy(b => b.Name);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _brands = await db.VehBrands.AsNoTracking().Include(b => b.OriginCountry).ToListAsync();
+        _loading = false;
+    }
+
+    private async Task SelectBrand(Brand brand)
+    {
+        _selectedBrand = brand;
+        _selectedSeries = null;
+        _loading = true;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _series = await db.VehSeries.AsNoTracking().Where(s => s.BrandId == brand.Guid).ToListAsync();
+        _loading = false;
+    }
+
+    private async Task SelectSeries(Series series)
+    {
+        _selectedSeries = series;
+        _loading = true;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _models = await db.VehicleModels.AsNoTracking().Where(m => m.SeriesId == series.Guid).ToListAsync();
+        _loading = false;
+    }
+
+    private void ClearAll() { _selectedBrand = null; _selectedSeries = null; _series = []; _models = []; }
+    private void ClearSeries() { _selectedSeries = null; _models = []; }
+}

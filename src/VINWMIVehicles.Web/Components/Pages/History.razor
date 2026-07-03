@@ -2,14 +2,19 @@
 @rendermode InteractiveServer
 @attribute [Authorize]
 @inject EfCoreService<AppDbContextVehicle> DbService
+@inject IJSRuntime JS
 @using SharedServices
 @using SharedServices.Services
 @using SharedServices.Models.Car
+@using System.Text
 
 <PageTitle>Historie — VINWMIVehicles</PageTitle>
 
 <div class="ui-page-header ui-anim-fade-up">
     <h3><i class="bi bi-clock-history"></i> Historie vyhledávání</h3>
+    <button class="btn btn-outline-secondary btn-sm" @onclick="ExportCsv">
+        <i class="bi bi-download me-1"></i>Export CSV
+    </button>
 </div>
 
 <!-- Tab switcher -->
@@ -215,5 +220,27 @@ else
         {
             IsLoading = false;
         }
+    }
+
+    private async Task ExportCsv()
+    {
+        var sb = new StringBuilder();
+        if (ActiveTab == "wmi" && WmiEntries != null)
+        {
+            sb.AppendLine("Kód,Typ,Země,Region,MaláSérie");
+            foreach (var e in FilteredWmiEntries)
+                sb.AppendLine($"{e.Code},{e.CodeType},{e.CountryISO ?? ""},{e.Region ?? ""},{e.IsSmallSeries}");
+        }
+        else if (ActiveTab == "vin" && VinInfos != null)
+        {
+            sb.AppendLine("VIN,Výrobce,Model,Rok,Rok výroby");
+            foreach (var v in FilteredVinInfos)
+                sb.AppendLine($"{v.Vin},{v.Make ?? ""},{v.Model ?? ""},{v.ModelYear ?? ""}");
+        }
+        var fileName = $"history_{ActiveTab}_{DateTime.Now:yyyyMMdd_HHmm}.csv";
+        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+        var base64 = Convert.ToBase64String(bytes);
+        await JS.InvokeVoidAsync("eval",
+            $"const a=document.createElement('a');a.href='data:text/csv;base64,{base64}';a.download='{fileName}';a.click();");
     }
 }
