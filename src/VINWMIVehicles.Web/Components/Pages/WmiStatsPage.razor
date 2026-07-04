@@ -1,0 +1,443 @@
+@page "/wmi-stats"
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+@using Microsoft.EntityFrameworkCore
+@using SharedServices.Models.VINWMIVehicles.Manufacturers
+@using SharedServices.Models.VINWMIVehicles.Geography
+@inject IDbContextFactory<AppDbContextVehicle> DbFactory
+@inject NavigationManager NavManager
+
+<PageTitle>WMI Statistiky — VINWMIVehicles</PageTitle>
+
+<div class="ui-page-header ui-anim-fade-up">
+    <h3><i class="bi bi-bar-chart-line"></i> WMI Statistiky</h3>
+    <span class="badge bg-secondary">Agregovaná data</span>
+</div>
+
+@if (_loading)
+{
+    <div class="ui-anim-fade-up d-flex align-items-center gap-2 mt-3">
+        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+        <span class="text-muted">Načítám statistiky…</span>
+    </div>
+}
+else
+{
+    <!-- Summary cards row 1 -->
+    <div class="row g-3 mb-3 ui-anim-fade-up">
+        <div class="col-6 col-md-3">
+            <div class="ui-panel text-center p-3 h-100">
+                <div class="fw-bold fs-3 text-accent">@_totalManufacturers</div>
+                <div class="text-muted small"><i class="bi bi-buildings me-1"></i>Výrobci</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="ui-panel text-center p-3 h-100">
+                <div class="fw-bold fs-3 text-accent">@_totalWmi</div>
+                <div class="text-muted small"><i class="bi bi-upc me-1"></i>WMI přiřazení</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="ui-panel text-center p-3 h-100">
+                <div class="fw-bold fs-3 text-accent">@_totalBrands</div>
+                <div class="text-muted small"><i class="bi bi-bookmark-star me-1"></i>Značky</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="ui-panel text-center p-3 h-100">
+                <div class="fw-bold fs-3 text-accent">@_totalModels</div>
+                <div class="text-muted small"><i class="bi bi-car-front me-1"></i>Modely</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary cards row 2 -->
+    <div class="row g-3 mb-3 ui-anim-fade-up">
+        <div class="col-6 col-md-3">
+            <div class="ui-panel text-center p-3 h-100">
+                <div class="fw-bold fs-3 text-success">@_activeManufacturers</div>
+                <div class="text-muted small"><i class="bi bi-check-circle me-1"></i>Aktivních výrobců</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="ui-panel text-center p-3 h-100">
+                <div class="fw-bold fs-3 text-success">@_activeWmi</div>
+                <div class="text-muted small"><i class="bi bi-check-circle me-1"></i>Aktivních WMI</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="ui-panel text-center p-3 h-100">
+                <div class="fw-bold fs-3 text-accent">@_totalVinRecords</div>
+                <div class="text-muted small"><i class="bi bi-card-text me-1"></i>VIN záznamy</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="ui-panel text-center p-3 h-100">
+                <div class="fw-bold fs-3 text-accent">@_totalVinHistory</div>
+                <div class="text-muted small"><i class="bi bi-clock-history me-1"></i>VIN história</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WMI by country -->
+    <div class="ui-panel ui-anim-fade-up mb-3">
+        <div class="ui-panel-header d-flex align-items-center justify-content-between">
+            <span class="ui-panel-title">
+                <i class="bi bi-globe2 text-accent me-1"></i>
+                WMI přiřazení podle země
+            </span>
+            <div class="d-flex gap-2 align-items-center">
+                <label class="d-flex align-items-center gap-1 small text-muted">
+                    <input type="checkbox" @bind="_countryOnlyActive" @bind:after="StateHasChanged" />
+                    Jen aktivní WMI
+                </label>
+                <span class="badge bg-secondary">@SortedCountryRows.Count() zemí</span>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="cursor:pointer" @onclick='() => SetSort("country")'>
+                            Země @SortArrow("country")
+                        </th>
+                        <th class="text-center" style="cursor:pointer" @onclick='() => SetSort("manufacturers")'>
+                            Výrobci @SortArrow("manufacturers")
+                        </th>
+                        <th class="text-center" style="cursor:pointer" @onclick='() => SetSort("wmi")'>
+                            WMI @SortArrow("wmi")
+                        </th>
+                        <th class="text-center" style="cursor:pointer" @onclick='() => SetSort("brands")'>
+                            Značky @SortArrow("brands")
+                        </th>
+                        <th class="text-center" style="cursor:pointer" @onclick='() => SetSort("models")'>
+                            Modely @SortArrow("models")
+                        </th>
+                        <th class="text-center">Graf WMI</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var countryRows = SortedCountryRows.ToList();
+                        if (!countryRows.Any())
+                        {
+                            <tr><td colspan="6" class="text-muted text-center py-4">Žádná data.</td></tr>
+                        }
+                        foreach (var row in countryRows)
+                        {
+                            var barPct = _maxWmiPerCountry > 0 ? (int)((row.WmiCount * 100.0) / _maxWmiPerCountry) : 0;
+                            <tr>
+                                <td>
+                                    <span class="fw-semibold">@row.CountryName</span>
+                                    <span class="text-muted small ms-1">@row.IsoCode2</span>
+                                </td>
+                                <td class="text-center"><span class="badge bg-secondary">@row.ManufacturerCount</span></td>
+                                <td class="text-center"><span class="badge bg-primary">@row.WmiCount</span></td>
+                                <td class="text-center"><span class="badge bg-secondary">@row.BrandCount</span></td>
+                                <td class="text-center"><span class="badge bg-secondary">@row.ModelCount</span></td>
+                                <td style="min-width:120px;">
+                                    <div class="progress" style="height:8px;" title="@row.WmiCount WMI">
+                                        <div class="progress-bar bg-primary" style="width:@barPct%"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- WMI by data source -->
+    <div class="ui-panel ui-anim-fade-up mb-3">
+        <div class="ui-panel-header">
+            <span class="ui-panel-title">
+                <i class="bi bi-database text-accent me-1"></i>
+                WMI podle zdroje dat
+            </span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Zdroj</th>
+                        <th class="text-center">Celkem</th>
+                        <th class="text-center">Aktivní</th>
+                        <th class="text-center">Neaktivní</th>
+                        <th>Podíl</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _sourceStats)
+                    {
+                        var activePct = row.Total > 0 ? (int)((row.Active * 100.0) / row.Total) : 0;
+                        var inactivePct = 100 - activePct;
+                        var totalPct = _totalWmi > 0 ? (int)((row.Total * 100.0) / _totalWmi) : 0;
+                        <tr>
+                            <td><span class="badge bg-secondary">@row.Source</span></td>
+                            <td class="text-center fw-semibold">@row.Total</td>
+                            <td class="text-center"><span class="text-success small">@row.Active</span></td>
+                            <td class="text-center"><span class="text-muted small">@row.Inactive</span></td>
+                            <td style="min-width:160px;">
+                                <div class="progress mb-1" style="height:8px;" title="@totalPct % z celku">
+                                    <div class="progress-bar bg-success" style="width:@activePct%"></div>
+                                    <div class="progress-bar bg-secondary opacity-50" style="width:@inactivePct%"></div>
+                                </div>
+                                <span class="text-muted" style="font-size:.65rem;">@totalPct % z celku · @activePct % aktivních</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Top 20 manufacturers by WMI count -->
+    <div class="ui-panel ui-anim-fade-up mb-3">
+        <div class="ui-panel-header">
+            <span class="ui-panel-title">
+                <i class="bi bi-trophy text-accent me-1"></i>
+                Top 20 výrobců — nejvíce WMI kódů
+            </span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Výrobce</th>
+                        <th>Země</th>
+                        <th class="text-center">WMI</th>
+                        <th class="text-center">Značky</th>
+                        <th class="text-center">Modely</th>
+                        <th class="text-center">Stav</th>
+                        <th>Graf</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var rank = 1;
+                        foreach (var m in _topManufacturers)
+                        {
+                            var barPct2 = _maxWmiTop > 0 ? (int)((m.WmiCount * 100.0) / _maxWmiTop) : 0;
+                            <tr style="cursor:pointer" @onclick='() => NavManager.NavigateTo("/manufacturers/" + m.Guid)'>
+                                <td class="text-muted small">@rank</td>
+                                <td>
+                                    <a href="/manufacturers/@m.Guid" class="text-decoration-none fw-semibold" @onclick:stopPropagation>@m.Name</a>
+                                    @if (!string.IsNullOrEmpty(m.HeadquartersCity))
+                                    {
+                                        <div class="text-muted" style="font-size:.7rem;">@m.HeadquartersCity</div>
+                                    }
+                                </td>
+                                <td class="small text-muted">@(m.CountryName ?? "—")</td>
+                                <td class="text-center"><span class="badge bg-primary">@m.WmiCount</span></td>
+                                <td class="text-center"><span class="badge bg-secondary">@m.BrandCount</span></td>
+                                <td class="text-center"><span class="badge bg-secondary">@m.ModelCount</span></td>
+                                <td class="text-center">
+                                    @if (m.IsActive)
+                                    { <span class="badge bg-success small">Aktivní</span> }
+                                    else
+                                    { <span class="badge bg-secondary small">Neaktivní</span> }
+                                </td>
+                                <td style="min-width:100px;">
+                                    <div class="progress" style="height:6px;" title="@m.WmiCount WMI">
+                                        <div class="progress-bar @(m.IsActive ? "bg-primary" : "bg-secondary")" style="width:@barPct2%"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                            rank++;
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- WMI first-character prefix distribution -->
+    <div class="ui-panel ui-anim-fade-up mb-3">
+        <div class="ui-panel-header">
+            <span class="ui-panel-title">
+                <i class="bi bi-grid-3x3 text-accent me-1"></i>
+                Distribuce WMI — první znak
+            </span>
+        </div>
+        @{
+            var maxPrefixCount = _prefixStats.Any() ? _prefixStats.Values.Max() : 1;
+        }
+        <div class="d-flex flex-wrap gap-2 p-3 align-items-end">
+            @foreach (var kv in _prefixStats.OrderBy(p => p.Key))
+            {
+                var hPct = (int)((kv.Value * 64.0) / maxPrefixCount);
+                <div class="d-flex flex-column align-items-center" style="min-width:34px;" title="@kv.Key: @kv.Value WMI">
+                    <span class="text-muted" style="font-size:.58rem;">@kv.Value</span>
+                    <div class="bg-primary rounded-top" style="width:26px;height:@(Math.Max(hPct,4))px;opacity:.72;"></div>
+                    <span class="fw-semibold small text-accent">@kv.Key</span>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+
+    // Summary
+    private int _totalManufacturers;
+    private int _activeManufacturers;
+    private int _totalWmi;
+    private int _activeWmi;
+    private int _totalBrands;
+    private int _totalModels;
+    private int _totalVinRecords;
+    private int _totalVinHistory;
+
+    // Country table
+    private List<CountryRow> _countryRows = new();
+    private bool _countryOnlyActive;
+    private string _sortField = "wmi";
+    private bool _sortAsc;
+    private int _maxWmiPerCountry;
+
+    private IEnumerable<CountryRow> SortedCountryRows
+    {
+        get
+        {
+            var rows = _countryOnlyActive ? _countryRows.Where(r => r.ActiveWmiCount > 0) : _countryRows.AsEnumerable();
+            return (_sortField, _sortAsc) switch
+            {
+                ("country", true)       => rows.OrderBy(r => r.CountryName),
+                ("country", false)      => rows.OrderByDescending(r => r.CountryName),
+                ("manufacturers", true) => rows.OrderBy(r => r.ManufacturerCount),
+                ("manufacturers", false)=> rows.OrderByDescending(r => r.ManufacturerCount),
+                ("wmi", true)           => rows.OrderBy(r => r.WmiCount),
+                ("brands", true)        => rows.OrderBy(r => r.BrandCount),
+                ("brands", false)       => rows.OrderByDescending(r => r.BrandCount),
+                ("models", true)        => rows.OrderBy(r => r.ModelCount),
+                ("models", false)       => rows.OrderByDescending(r => r.ModelCount),
+                _                       => rows.OrderByDescending(r => r.WmiCount)
+            };
+        }
+    }
+
+    // Source stats
+    private List<SourceRow> _sourceStats = new();
+
+    // Top manufacturers
+    private List<ManufacturerRow> _topManufacturers = new();
+    private int _maxWmiTop;
+
+    // Prefix distribution
+    private Dictionary<string, int> _prefixStats = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        // Summary counts
+        _totalManufacturers = await db.VehManufacturers.CountAsync();
+        _activeManufacturers = await db.VehManufacturers.CountAsync(m => m.IsActive);
+        _totalWmi = await db.WmiAssignments.CountAsync();
+        _activeWmi = await db.WmiAssignments.CountAsync(w => w.IsActive);
+        _totalBrands = await db.VehBrands.CountAsync();
+        _totalModels = await db.VehicleModels.CountAsync();
+        _totalVinRecords = await db.VinRecords.CountAsync();
+        _totalVinHistory = await db.VinDecodeHistories.CountAsync();
+
+        // Country aggregation
+        var countryData = await db.VehManufacturers
+            .Where(m => m.CountryId != null)
+            .GroupBy(m => new { m.CountryId, m.Country!.Name, m.Country!.IsoCode2 })
+            .Select(g => new
+            {
+                g.Key.Name,
+                g.Key.IsoCode2,
+                ManufacturerCount = g.Count(),
+                WmiCount = g.Sum(m => m.WmiAssignments.Count),
+                ActiveWmiCount = g.Sum(m => m.WmiAssignments.Count(w => w.IsActive)),
+                BrandCount = g.Sum(m => m.Brands.Count),
+                ModelCount = g.Sum(m => m.Brands.SelectMany(b => b.Series).SelectMany(s => s.Models).Count())
+            })
+            .ToListAsync();
+
+        _countryRows = countryData.Select(r => new CountryRow(
+            r.Name, r.IsoCode2, r.ManufacturerCount, r.WmiCount, r.ActiveWmiCount, r.BrandCount, r.ModelCount
+        )).ToList();
+
+        _maxWmiPerCountry = _countryRows.Any() ? _countryRows.Max(r => r.WmiCount) : 1;
+
+        // Source distribution
+        var sourceData = await db.WmiAssignments
+            .GroupBy(w => w.Source)
+            .Select(g => new { Source = g.Key.ToString(), Total = g.Count(), Active = g.Count(w => w.IsActive) })
+            .ToListAsync();
+
+        _sourceStats = sourceData
+            .Select(s => new SourceRow(s.Source, s.Total, s.Active, s.Total - s.Active))
+            .OrderByDescending(s => s.Total)
+            .ToList();
+
+        // Top 20 manufacturers by WMI count
+        var topRaw = await db.VehManufacturers
+            .Select(m => new
+            {
+                m.Guid,
+                m.Name,
+                m.HeadquartersCity,
+                m.IsActive,
+                CountryName = m.Country != null ? m.Country.Name : null,
+                WmiCount = m.WmiAssignments.Count,
+                BrandCount = m.Brands.Count,
+                ModelCount = m.Brands.SelectMany(b => b.Series).SelectMany(s => s.Models).Count()
+            })
+            .OrderByDescending(m => m.WmiCount)
+            .Take(20)
+            .ToListAsync();
+
+        _topManufacturers = topRaw
+            .Select(m => new ManufacturerRow(m.Guid, m.Name, m.HeadquartersCity, m.IsActive, m.CountryName, m.WmiCount, m.BrandCount, m.ModelCount))
+            .ToList();
+
+        _maxWmiTop = _topManufacturers.Any() ? _topManufacturers.Max(m => m.WmiCount) : 1;
+
+        // WMI first-char prefix distribution
+        var allWmiCodes = await db.WmiAssignments.Select(w => w.Wmi).ToListAsync();
+        _prefixStats = allWmiCodes
+            .Where(w => !string.IsNullOrEmpty(w))
+            .GroupBy(w => w[0].ToString().ToUpperInvariant())
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        _loading = false;
+    }
+
+    private void SetSort(string field)
+    {
+        if (_sortField == field)
+            _sortAsc = !_sortAsc;
+        else
+        {
+            _sortField = field;
+            _sortAsc = false;
+        }
+    }
+
+    private MarkupString SortArrow(string field)
+    {
+        if (_sortField != field) return new MarkupString("<i class=\"bi bi-chevron-expand text-muted\" style=\"font-size:.7rem;\"></i>");
+        var icon = _sortAsc ? "bi-chevron-up" : "bi-chevron-down";
+        return new MarkupString($"<i class=\"bi {icon} text-accent\" style=\"font-size:.7rem;\"></i>");
+    }
+
+    // ── DTOs ──────────────────────────────────────────────────────────────────
+    private record CountryRow(
+        string CountryName, string IsoCode2,
+        int ManufacturerCount, int WmiCount, int ActiveWmiCount,
+        int BrandCount, int ModelCount);
+
+    private record SourceRow(string Source, int Total, int Active, int Inactive);
+
+    private record ManufacturerRow(
+        Guid Guid, string Name, string? HeadquartersCity,
+        bool IsActive, string? CountryName,
+        int WmiCount, int BrandCount, int ModelCount);
+}
