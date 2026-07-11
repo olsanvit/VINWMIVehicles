@@ -34,6 +34,7 @@ public class NhtsaService : INhtsaService
     /// A <see cref="NhtsaWmiResponse"/> with manufacturer results on success,
     /// or a response whose <c>Message</c> property describes the failure.
     /// </returns>
+    // AUDIT:PENDING|Střední|Bez retry logiky a rate limiting pro NHTSA API
     public async Task<NhtsaWmiResponse> DecodeWMIAsync(string wmi)
     {
         try
@@ -63,6 +64,7 @@ public class NhtsaService : INhtsaService
     /// A <see cref="NhtsaVinResponse"/> with decoded variable entries on success,
     /// or a response whose <c>Message</c> property describes the failure.
     /// </returns>
+    // AUDIT:PENDING|Střední|Bez retry logiky a rate limiting
     public async Task<NhtsaVinResponse> DecodeVINAsync(string vin)
     {
         try

@@ -49,6 +49,7 @@ public class VinRandomizerService
     /// The method exits early if no WMI codes are present in the database.
     /// </summary>
     /// <param name="ct">A cancellation token that can interrupt each iteration of the generation loops.</param>
+    // AUDIT:PENDING|Střední|WMC přes WmiAssignment workaround; model gpt-5-mini hardcoded na 3 místech
     public async Task RunDailyAsync(CancellationToken ct = default)
     {
         var day = DateTime.UtcNow.Day; // 1–31

@@ -51,6 +51,7 @@ public class VehicleSearchService : IVehicleSearchService
     /// A tuple of the raw NHTSA response, a pretty-printed JSON string of the AI result,
     /// and the persisted <see cref="WmiEntry"/> (or <see langword="null"/> on persistence failure).
     /// </returns>
+    // AUDIT:OK
     public async Task<(NhtsaWmiResponse Nhtsa, string AiResponse, WmiEntry? Saved)> SearchWmiAsync(string code, WmiCodeType codeType)
     {
         var nhtsaTask = _nhtsa.DecodeWMIAsync(code);
@@ -109,6 +110,7 @@ public class VehicleSearchService : IVehicleSearchService
     /// A tuple of the raw NHTSA response, the AI narrative text,
     /// and the persisted <see cref="VinInfo"/> record (or <see langword="null"/> on persistence failure).
     /// </returns>
+    // AUDIT:PENDING|Nízký|AI systémový prompt hardcoded v metodě
     public async Task<(NhtsaVinResponse Nhtsa, string AiResponse, VinInfo? Saved)> SearchVinAsync(string vin)
     {
         var nhtsaTask = _nhtsa.DecodeVINAsync(vin);
@@ -157,6 +159,7 @@ public class VehicleSearchService : IVehicleSearchService
     /// A tuple of the AI analysis text and the persisted <see cref="VinInfo"/> record
     /// (or <see langword="null"/> on persistence failure).
     /// </returns>
+    // AUDIT:PENDING|Nízký|AI systémový prompt hardcoded v metodě
     public async Task<(string AiResponse, VinInfo? Saved)> SearchCustomVinAsync(string vin, string? notes)
     {
         var userMsg = $"Custom VIN: {vin.Trim()}";
