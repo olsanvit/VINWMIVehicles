@@ -98,15 +98,22 @@ builder.Services.AddScoped<AchievementService>(sp =>
 builder.Services.AddScoped<ErrorService<AppDbContextVehicle>>();
 builder.Services.AddScoped<EfCoreService<AppDbContextVehicle>>();
 builder.Services.AddGlobalErrorLogging<AppDbContextVehicle>();
-builder.Services.AddScoped<ChatGPTWMI>();
-builder.Services.AddScoped<ChatGptAsker>(_ => new ChatGptAsker(apiKey: openAiKey, isSimple: false));
 // Typed HTTP client — konfiguruje HttpClient a registruje NhtsaService jako INhtsaService v jednom
 builder.Services.AddHttpClient<INhtsaService, NhtsaService>();
-builder.Services.AddScoped<IVehicleSearchService, VehicleSearchService>();
 
-// VIN Randomizer
-builder.Services.AddScoped<VinRandomizerService>();
-builder.Services.AddHostedService<VinRandomizerHostedService>();
+var hasOpenAi = !string.IsNullOrWhiteSpace(openAiKey);
+if (hasOpenAi)
+{
+    builder.Services.AddScoped<ChatGPTWMI>();
+    builder.Services.AddScoped<ChatGptAsker>(_ => new ChatGptAsker(apiKey: openAiKey, isSimple: false));
+    builder.Services.AddScoped<IVehicleSearchService, VehicleSearchService>();
+    builder.Services.AddScoped<VinRandomizerService>();
+    builder.Services.AddHostedService<VinRandomizerHostedService>();
+}
+else
+{
+    builder.Services.AddScoped<IVehicleSearchService, DisabledVehicleSearchService>();
+}
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHealthChecks();
@@ -123,8 +130,8 @@ TaskScheduler.UnobservedTaskException += (sender, e) =>
 var app = builder.Build();
 app.MapHealthChecks("/health");
 
-if (string.IsNullOrWhiteSpace(builder.Configuration["OpenAI:ApiKey"]))
-    Log.Warning("VINWMIVehicles: OpenAI ApiKey is not configured — AI features will fail");
+if (!hasOpenAi)
+    Log.Warning("VINWMIVehicles: OpenAI ApiKey is not configured — AI features disabled");
 if (string.IsNullOrWhiteSpace(builder.Configuration["Authentication:Google:ClientId"]))
     Log.Warning("VINWMIVehicles: Google OAuth ClientId is not configured — Google login will fail");
 
