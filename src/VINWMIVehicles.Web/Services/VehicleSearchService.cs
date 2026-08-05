@@ -12,6 +12,14 @@ namespace VINWMIVehicles.Services;
 /// </summary>
 public class VehicleSearchService : IVehicleSearchService
 {
+    private const string VinSystemPrompt =
+        "You are a VIN decoder expert. Provide a concise analysis of the vehicle based on the VIN. " +
+        "Include make, model, year, country of manufacture, and notable features. Be factual and brief.";
+
+    private const string CustomVinSystemPrompt =
+        "You are a VIN decoder expert. Analyze the given custom or non-standard VIN. " +
+        "Extract as much vehicle information as possible: manufacturer, country, year, model line, body type, engine, etc. Be factual.";
+
     private readonly INhtsaService _nhtsa;
     private readonly ChatGPTWMI _wmiGpt;
     private readonly ChatGptAsker _gpt;
@@ -110,13 +118,11 @@ public class VehicleSearchService : IVehicleSearchService
     /// A tuple of the raw NHTSA response, the AI narrative text,
     /// and the persisted <see cref="VinInfo"/> record (or <see langword="null"/> on persistence failure).
     /// </returns>
-    // AUDIT:PENDING|Nízký|AI systémový prompt hardcoded v metodě
+    // AUDIT:FIXED|byl: systémový prompt hardcoded v metodě; přesunuto do konstanty
     public async Task<(NhtsaVinResponse Nhtsa, string AiResponse, VinInfo? Saved)> SearchVinAsync(string vin)
     {
         var nhtsaTask = _nhtsa.DecodeVINAsync(vin);
-        var aiTask = _gpt.AskAsync(
-            "You are a VIN decoder expert. Provide a concise analysis of the vehicle based on the VIN. Include make, model, year, country of manufacture, and notable features. Be factual and brief.",
-            $"Analyze VIN: {vin.Trim().ToUpperInvariant()}");
+        var aiTask = _gpt.AskAsync(VinSystemPrompt, $"Analyze VIN: {vin.Trim().ToUpperInvariant()}");
 
         await Task.WhenAll(nhtsaTask, aiTask);
 
@@ -159,16 +165,14 @@ public class VehicleSearchService : IVehicleSearchService
     /// A tuple of the AI analysis text and the persisted <see cref="VinInfo"/> record
     /// (or <see langword="null"/> on persistence failure).
     /// </returns>
-    // AUDIT:PENDING|Nízký|AI systémový prompt hardcoded v metodě
+    // AUDIT:FIXED|byl: systémový prompt hardcoded v metodě; přesunuto do konstanty
     public async Task<(string AiResponse, VinInfo? Saved)> SearchCustomVinAsync(string vin, string? notes)
     {
         var userMsg = $"Custom VIN: {vin.Trim()}";
         if (!string.IsNullOrWhiteSpace(notes))
             userMsg += $"\nNotes: {notes}";
 
-        var aiText = await _gpt.AskAsync(
-            "You are a VIN decoder expert. Analyze the given custom or non-standard VIN. Extract as much vehicle information as possible: manufacturer, country, year, model line, body type, engine, etc. Be factual.",
-            userMsg) ?? "";
+        var aiText = await _gpt.AskAsync(CustomVinSystemPrompt, userMsg) ?? "";
 
         VinInfo? saved = null;
         try

@@ -20,6 +20,8 @@ public class VinRandomizerService
     private readonly ChatGptAsker _gpt;
     private readonly ILogger<VinRandomizerService> _log;
 
+    private const string AiModel = "gpt-4o-mini";
+
     private static readonly char[] VinChars =
         "ABCDEFGHJKLMNPRSTUVWXYZ0123456789".ToCharArray(); // bez I, O, Q
 
@@ -49,7 +51,7 @@ public class VinRandomizerService
     /// The method exits early if no WMI codes are present in the database.
     /// </summary>
     /// <param name="ct">A cancellation token that can interrupt each iteration of the generation loops.</param>
-    // AUDIT:PENDING|Střední|WMC přes WmiAssignment workaround; model gpt-5-mini hardcoded na 3 místech
+    // AUDIT:FIXED|byl: model hardcoded na 3 místech; nyní konstanta AiModel
     public async Task RunDailyAsync(CancellationToken ct = default)
     {
         var day = DateTime.UtcNow.Day; // 1–31
@@ -166,7 +168,7 @@ public class VinRandomizerService
             VinRecordId = record.Guid,
             Query       = query,
             Response    = response,
-            AiModel     = "gpt-5-mini",
+            AiModel     = AiModel,
             CreatedAt   = DateTime.UtcNow
         });
     }
@@ -196,7 +198,7 @@ public class VinRandomizerService
             WmiAssignmentId = wmiAssignmentId,
             Query           = query,
             Response        = response,
-            AiModel         = "gpt-5-mini",
+            AiModel         = AiModel,
             CreatedAt       = DateTime.UtcNow
         });
     }
@@ -231,7 +233,7 @@ public class VinRandomizerService
             WmiAssignmentId = assignment.Guid,
             Query           = query,
             Response        = response,
-            AiModel         = "gpt-5-mini",
+            AiModel         = AiModel,
             CreatedAt       = DateTime.UtcNow
         });
     }

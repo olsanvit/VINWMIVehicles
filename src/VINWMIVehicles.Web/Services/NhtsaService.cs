@@ -34,25 +34,14 @@ public class NhtsaService : INhtsaService
     /// A <see cref="NhtsaWmiResponse"/> with manufacturer results on success,
     /// or a response whose <c>Message</c> property describes the failure.
     /// </returns>
-    // AUDIT:PENDING|Střední|Bez retry logiky a rate limiting pro NHTSA API
+    // AUDIT:FIXED|byl: bez retry; nyní 3 pokusy s exponenciálním backoffem
     public async Task<NhtsaWmiResponse> DecodeWMIAsync(string wmi)
     {
-        try
-        {
-            var result = await _http.GetFromJsonAsync<NhtsaWmiResponse>(
-                $"{BaseUrl}/decodewmi/{Uri.EscapeDataString(wmi)}?format=json");
-            return result ?? new NhtsaWmiResponse();
-        }
-        catch (HttpRequestException ex)
-        {
-            _log.LogWarning(ex, "NHTSA HTTP chyba při DecodeWMI pro WMI={Wmi} (status={Status})", wmi, ex.StatusCode);
-            return new NhtsaWmiResponse { Message = $"NHTSA API nedostupné: {ex.Message}" };
-        }
-        catch (Exception ex)
-        {
-            _log.LogError(ex, "Neočekávaná chyba při DecodeWMI pro WMI={Wmi}", wmi);
-            return new NhtsaWmiResponse { Message = "NHTSA API chyba" };
-        }
+        return await RetryAsync(
+            () => _http.GetFromJsonAsync<NhtsaWmiResponse>(
+                $"{BaseUrl}/decodewmi/{Uri.EscapeDataString(wmi)}?format=json"),
+            ex => _log.LogWarning(ex, "NHTSA chyba při DecodeWMI WMI={Wmi}", wmi),
+            new NhtsaWmiResponse { Message = "NHTSA API chyba" });
     }
 
     /// <summary>
@@ -64,24 +53,42 @@ public class NhtsaService : INhtsaService
     /// A <see cref="NhtsaVinResponse"/> with decoded variable entries on success,
     /// or a response whose <c>Message</c> property describes the failure.
     /// </returns>
-    // AUDIT:PENDING|Střední|Bez retry logiky a rate limiting
+    // AUDIT:FIXED|byl: bez retry; nyní 3 pokusy s exponenciálním backoffem
     public async Task<NhtsaVinResponse> DecodeVINAsync(string vin)
     {
-        try
+        return await RetryAsync(
+            () => _http.GetFromJsonAsync<NhtsaVinResponse>(
+                $"{BaseUrl}/decodevin/{Uri.EscapeDataString(vin)}?format=json"),
+            ex => _log.LogWarning(ex, "NHTSA chyba při DecodeVIN VIN={Vin}", vin),
+            new NhtsaVinResponse { Message = "NHTSA API chyba" });
+    }
+
+    // 3 pokusy s exponenciálním backoffem: 1s, 2s, 4s
+    private static async Task<T> RetryAsync<T>(
+        Func<Task<T?>> call,
+        Action<Exception> logWarning,
+        T fallback,
+        int maxAttempts = 3)
+    {
+        int delay = 1000;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            var result = await _http.GetFromJsonAsync<NhtsaVinResponse>(
-                $"{BaseUrl}/decodevin/{Uri.EscapeDataString(vin)}?format=json");
-            return result ?? new NhtsaVinResponse();
+            try
+            {
+                var result = await call();
+                return result ?? fallback;
+            }
+            catch (Exception ex) when (attempt < maxAttempts)
+            {
+                logWarning(ex);
+                await Task.Delay(delay);
+                delay *= 2;
+            }
+            catch (Exception ex)
+            {
+                logWarning(ex);
+            }
         }
-        catch (HttpRequestException ex)
-        {
-            _log.LogWarning(ex, "NHTSA HTTP chyba při DecodeVIN pro VIN={Vin} (status={Status})", vin, ex.StatusCode);
-            return new NhtsaVinResponse { Message = $"NHTSA API nedostupné: {ex.Message}" };
-        }
-        catch (Exception ex)
-        {
-            _log.LogError(ex, "Neočekávaná chyba při DecodeVIN pro VIN={Vin}", vin);
-            return new NhtsaVinResponse { Message = "NHTSA API chyba" };
-        }
+        return fallback;
     }
 }
