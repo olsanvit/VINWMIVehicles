@@ -334,15 +334,24 @@ else
     {
         await using var db = await DbFactory.CreateDbContextAsync();
 
-        // Summary counts
-        _totalManufacturers = await db.VehManufacturers.CountAsync();
-        _activeManufacturers = await db.VehManufacturers.CountAsync(m => m.IsActive);
-        _totalWmi = await db.WmiAssignments.CountAsync();
-        _activeWmi = await db.WmiAssignments.CountAsync(w => w.IsActive);
-        _totalBrands = await db.VehBrands.CountAsync();
-        _totalModels = await db.VehicleModels.CountAsync();
-        _totalVinRecords = await db.VinRecords.CountAsync();
-        _totalVinHistory = await db.VinDecodeHistories.CountAsync();
+        // Summary counts — parallel
+        var t1 = db.VehManufacturers.CountAsync();
+        var t2 = db.VehManufacturers.CountAsync(m => m.IsActive);
+        var t3 = db.WmiAssignments.CountAsync();
+        var t4 = db.WmiAssignments.CountAsync(w => w.IsActive);
+        var t5 = db.VehBrands.CountAsync();
+        var t6 = db.VehicleModels.CountAsync();
+        var t7 = db.VinRecords.CountAsync();
+        var t8 = db.VinDecodeHistories.CountAsync();
+        await Task.WhenAll(t1, t2, t3, t4, t5, t6, t7, t8);
+        _totalManufacturers = t1.Result;
+        _activeManufacturers = t2.Result;
+        _totalWmi = t3.Result;
+        _activeWmi = t4.Result;
+        _totalBrands = t5.Result;
+        _totalModels = t6.Result;
+        _totalVinRecords = t7.Result;
+        _totalVinHistory = t8.Result;
 
         // Country aggregation
         var countryData = await db.VehManufacturers
