@@ -55,3 +55,8 @@ nunit-*.xml
 # Secrets - never commit
 **/appsettings.Development.json
 **/appsettings.Local.json
+
+# Produkční konfigurace s přístupovými údaji — nikdy do repa (repo je veřejné).
+# Pozor: už trackovaný soubor tím odtrackovaný NENÍ, na to je potřeba git rm --cached.
+appsettings.Production.json
+**/appsettings.Production.json
